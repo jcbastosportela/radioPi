@@ -4,6 +4,7 @@ import logging
 import IRadio
 import socket
 import thread
+import atexit
 
 
 #http://www.radyo7.com/dinle/listen.php?ext=pls
@@ -14,7 +15,7 @@ RAD_CMD = "omxplayer"
 myRadio = IRadio.IRadio()
 sock = socket.socket()
 HOST = ""
-PORT = 5555
+PORT = 6666
 BUFF = 1024
 FRAME_HEAD = chr(0x02)  #STX
 FRAME_TAIL = chr(0x03)  #ETX
@@ -70,12 +71,6 @@ def get_tcp_cmds_handler(clientsock):
                 pass
         log.info("Going to process " + frame)
         myRadio.process_command(frame)
-        #v_url = get_video_url(frame)
-        #if v_url != u'':
-        #    myRadio.stop()
-        #    myRadio = IRadio.IRadio(v_url)
-        #if cmd != "\n" and cmd != "\r":
-            #radio.sendCmd(cmd)
 
 
 def __init__():
@@ -113,8 +108,21 @@ def __init__():
     sock.close()
 
 
+def at_exit():
+    log.info("exiting...")
+    if sock is not None:
+        sock.close()
+
+
 # In case is called from terminal
 if __name__ == "__main__":
+    import sys
+
+    # register the program exit
+    atexit.register(at_exit)
+    # the only argument acceptable is another player
+    if len(sys.argv) >= 1:
+        myRadio = IRadio.IRadio(sys.argv[1])
     __init__()
 
 

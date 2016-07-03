@@ -82,6 +82,18 @@ def get_video_url(link):
 
 class IRadio:
     def __init__(self):
+        self.log.debug("dummy init")
+
+    def __init__(self, player_cmd=defRadioCMD):
+        """
+
+        :param player_cmd:  The alternative radio command
+         :type player_cmd: str
+        """
+        self.radioCMD = player_cmd
+        self.initialize_commons()
+
+    def initialize_commons(self):
         self.log = logging.getLogger("IRadio")
         streamH = logging.StreamHandler(sys.stderr)
         self.log.setLevel(logging.DEBUG)
@@ -99,7 +111,7 @@ class IRadio:
         """
         if self.p:
             self.stop()
-        fullCMD = defRadioCMD + " " + stream
+        fullCMD = self.radioCMD + " " + stream
         #call the radio app and get the stdin
         self.p = subprocess.Popen(fullCMD, shell=True, stdin=subprocess.PIPE, preexec_fn=os.setsid)
         self.log.info("Radio App started!")
