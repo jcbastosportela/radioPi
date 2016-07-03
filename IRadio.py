@@ -133,29 +133,29 @@ class IRadio:
         :return nothing
         :rtype: None
         """
-        #try:
-        ret = parse.search("src={:w}"+SEPARATOR, cmd)
-        if ret is not None and len(ret.fixed) != 0:
-            if SRC_YOUTUBE.lower() == ret.fixed[0].lower():
-                ret = parse.search("link={}" + SEPARATOR, cmd)
-                self.play(get_video_url(ret.fixed[0]))
-            elif SRC_RADIO.lower() == ret.fixed[0].lower():
-                ret = parse.search("url={}" + SEPARATOR, cmd)
-                if ret is not None and len(ret.fixed) != 0:
-                    self.play(ret.fixed[0])
-                    return
-                ret = parse.search("pls={}" + SEPARATOR, cmd)
-                if ret is not None and len(ret.fixed) != 0:
-                    # TODO Download the link of the playlist and parse the contents
-                    return
-            return
+        try:
+            ret = parse.search("src={:w}"+SEPARATOR, cmd)
+            if ret is not None and len(ret.fixed) != 0:
+                if SRC_YOUTUBE.lower() == ret.fixed[0].lower():
+                    ret = parse.search("link={}" + SEPARATOR, cmd)
+                    self.play(get_video_url(ret.fixed[0]))
+                elif SRC_RADIO.lower() == ret.fixed[0].lower():
+                    ret = parse.search("url={}" + SEPARATOR, cmd)
+                    if ret is not None and len(ret.fixed) != 0:
+                        self.play(ret.fixed[0])
+                        return
+                    ret = parse.search("pls={}" + SEPARATOR, cmd)
+                    if ret is not None and len(ret.fixed) != 0:
+                        # TODO Download the link of the playlist and parse the contents
+                        return
+                return
 
-        ret = parse.search("cmd={:w}" + SEPARATOR, cmd)
-        if ret is not None and len(ret.fixed) != 0:
-            if CMD_PLAY.lower() == ret.fixed[0].lower():
-                self.sendCmd(OMX_PLAY)
+            ret = parse.search("cmd={:w}" + SEPARATOR, cmd)
+            if ret is not None and len(ret.fixed) != 0:
+                if CMD_PLAY.lower() == ret.fixed[0].lower():
+                    self.sendCmd(OMX_PLAY)
 
 
-        #except Exception:
-        #    self.log.error("ERR: Couldn't process message")
-        #    pass
+        except Exception:
+            self.log.error("ERR: Couldn't process message" + sys.exc_info()[0])
+            pass

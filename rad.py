@@ -112,6 +112,7 @@ def at_exit():
     log.info("exiting...")
     if sock is not None:
         sock.close()
+    myRadio.stop()
 
 
 # In case is called from terminal
