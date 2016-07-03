@@ -7,6 +7,7 @@ import signal
 import sys
 import subprocess
 import parse
+import requests
 import ConfigParser
 
 SEPARATOR = chr(29)     # GS
@@ -127,6 +128,30 @@ class IRadio:
         self.p.stdin.flush()
         self.log.info("Command {0} sent to radio".format(cmd))
 
+    def radio_playlist(self, pls_path):
+        """
+
+        :param pls_path: The playlist file path
+        :type pls_path: str
+        :return: nothing
+        """
+        pls = ConfigParser.ConfigParser()
+        pls.read(pls_path)
+        if "playlist" in pls.sections():
+            self.log.debug("found valid playlist in " + pls_path)
+            n_entries = pls.get("playlist", "NumberOfEntries")
+            if n_entries is None:
+                self.log.error("Playlist found, but no entries found on the playlist")
+                return
+            stream = pls.get("playlist", "File1")
+            if stream is None:
+                self.log.error("Playlist found, but no stream found on the playlist")
+                return
+            self.play(stream)
+        else:
+            self.log.error("No valid playlist in " + pls_path)
+            return
+
     def process_command(self, cmd):
         """
         :param cmd: Frame
@@ -146,25 +171,17 @@ class IRadio:
                     if ret is not None and len(ret.fixed) != 0:
                         self.play(ret.fixed[0])
                         return
+                    ret = parse.search("link={}" + SEPARATOR, cmd)
+                    if ret is not None and len(ret.fixed) != 0:
+                        resp = requests.get(ret.fixed[0])
+                        if resp.status_code == 200:
+                            with open("playlist.pls", "wb") as playlist_file:
+                                playlist_file.write(resp.content)
+                            self.radio_playlist( os.path.abspath(playlist_file.name))
+                        return
                     ret = parse.search("pls={}" + SEPARATOR, cmd)
                     if ret is not None and len(ret.fixed) != 0:
-                        pls = ConfigParser.ConfigParser()
-                        # TODO Download the file from the link
-                        #pls.read(ret.fixed[0])
-                        if "playlist" in pls.sections():
-                            self.log.debug("found valid playlist in " + ret.fixed[0])
-                            n_entries = pls.get("playlist", "NumberOfEntries")
-                            if n_entries is None:
-                                self.log.error("Playlist found, but no entries found on the playlist")
-                                return
-                            stream = pls.get("playlist", "File1")
-                            if stream is None:
-                                self.log.error("Playlist found, but no stream found on the playlist")
-                                return
-                            self.play(stream)
-                        else:
-                            self.log.error("No valid playlist in " + ret.fixed[0])
-                            return
+                        self.radio_playlist(ret.fixed[0])
                         return
                 return
 

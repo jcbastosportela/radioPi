@@ -111,7 +111,7 @@ class getTCPCmdsHandler (threading.Thread):
                 except:
                     # comes here always that there's no data received, which is most of the time, so lets give it a rest
                     # since we aren't getting any data anyway
-                    time.sleep(0.01)
+                    time.sleep(0.1)
                     pass
             log.info("Going to process " + frame)
             myRadio.process_command(frame)
@@ -143,14 +143,15 @@ def __init__():
     log.info("Socket now listening")
 
     #myRadio = IRadio.IRadio(get_video_url("https://www.youtube.com/watch?v=hn3wJ1_1Zsg"))
-    myRadio.play("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
-
+    #myRadio.play("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
+    myRadio.play("mms://a684.l880722683.c8807.e.lm.akamaistream.net/D/684/8807/v0001/reflector:22683")
     wait_conn_thread = waitTCPConnHandler(1, "wait_conn_thread", sock)
     wait_conn_thread.setDaemon(1)
     wait_conn_thread.start()
 
     try:
         while 1:
+            time.sleep(10)
             pass
     except (KeyboardInterrupt, SystemExit):
         log.info("SIG_TERM received")
@@ -171,6 +172,9 @@ def at_exit():
 if __name__ == "__main__":
     import sys
 
+    print chr(2)
+    print chr(3)
+    print chr(29)
     # register the program exit
     atexit.register(at_exit)
 
