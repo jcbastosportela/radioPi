@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import youtube_dl
 import logging
@@ -6,6 +7,7 @@ import signal
 import sys
 import subprocess
 import parse
+import ConfigParser
 
 SEPARATOR = chr(29)     # GS
 defRadioCMD = "omxplayer"
@@ -146,7 +148,23 @@ class IRadio:
                         return
                     ret = parse.search("pls={}" + SEPARATOR, cmd)
                     if ret is not None and len(ret.fixed) != 0:
-                        # TODO Download the link of the playlist and parse the contents
+                        pls = ConfigParser.ConfigParser()
+                        # TODO Download the file from the link
+                        #pls.read(ret.fixed[0])
+                        if "playlist" in pls.sections():
+                            self.log.debug("found valid playlist in " + ret.fixed[0])
+                            n_entries = pls.get("playlist", "NumberOfEntries")
+                            if n_entries is None:
+                                self.log.error("Playlist found, but no entries found on the playlist")
+                                return
+                            stream = pls.get("playlist", "File1")
+                            if stream is None:
+                                self.log.error("Playlist found, but no stream found on the playlist")
+                                return
+                            self.play(stream)
+                        else:
+                            self.log.error("No valid playlist in " + ret.fixed[0])
+                            return
                         return
                 return
 
@@ -156,6 +174,6 @@ class IRadio:
                     self.sendCmd(OMX_PLAY)
 
 
-        except Exception:
-            self.log.error("ERR: Couldn't process message" + sys.exc_info()[0])
+        except Exception as err:
+            self.log.error("ERR: Couldn't process message" + err.message)
             pass
