@@ -121,7 +121,7 @@ if __name__ == "__main__":
     # register the program exit
     atexit.register(at_exit)
     # the only argument acceptable is another player
-    if len(sys.argv) >= 1:
+    if len(sys.argv) >= 2:
         myRadio = IRadio.IRadio(sys.argv[1])
     __init__()
 
