@@ -9,5 +9,19 @@ ConfigParser
 
 .TCP protocol:
 src=SRC[link|url|pls]=CONTENT
-src=radiolink=http://provisioning.streamtheworld.com/pls/metro_fm.pls
 
+.Examples of radio links:
+src=radiourl=mms://195.245.168.21/antena1
+src=radiolink=http://radyo.itu.edu.tr/ITU_Radio_Rock.pls
+src=radiolink=http://radyo.itu.edu.tr/ITU_Radio_Jazz_Blues.pls
+src=radiolink=http://radyo.itu.edu.tr/ITU_Radio_Classical.pls
+src=radiourl=http://voyagewmp.radyotvonline.com
+
+.Example of control commands:
+ctrl=play
+ctrl=stop
+ctrl=volup
+ctrl=voldown
+
+.Example of commands:
+cmd=listradios

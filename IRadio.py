@@ -3,29 +3,112 @@ from __future__ import unicode_literals
 import youtube_dl
 import logging
 import os
-import signal
 import sys
-import subprocess
 import parse
 import requests
 import ConfigParser
+import IPlayer
 
 SEPARATOR = chr(29)     # GS
-defRadioCMD = "omxplayer"
+defRadioCMD = IPlayer.PLAYER_OMX
 
 #definition of possible sources
 SRC_YOUTUBE = "youtube"
 SRC_RADIO = "radio"
 
-#definition of possible commands
-CMD_PLAY = "play"
-CMD_VOLUP = "volup"
-CMD_VOLDOWN = "voldown"
 
-#definition of omxplayer commands
-OMX_PLAY = "p"
-OMX_VOLUP = "+"
-OMX_VOLDOWN = "-"
+class IRadio:
+    def __init__(self, player_cmd=defRadioCMD):
+        """
+
+        :param player_cmd:  The alternative radio command
+         :type player_cmd: str
+        """
+        self.player = IPlayer.IPlayer(player_cmd)
+        self.initialize_commons()
+
+    def initialize_commons(self):
+        self.log = logging.getLogger("IRadio")
+        streamH = logging.StreamHandler(sys.stderr)
+        self.log.setLevel(logging.DEBUG)
+        self.log.addHandler(streamH)
+        self.log.debug("log inited")
+
+    def play(self, path):
+        self.player.play(path)
+
+    def radio_playlist(self, pls_path):
+        """
+
+        :param pls_path: The playlist file path
+        :type pls_path: str
+        :return: nothing
+        """
+        pls = ConfigParser.ConfigParser()
+        pls.read(pls_path)
+        if "playlist" in pls.sections():
+            self.log.debug("found valid playlist in " + pls_path)
+            n_entries = pls.get("playlist", "NumberOfEntries")
+            if n_entries is None:
+                self.log.error("Playlist found, but no entries found on the playlist")
+                return
+            stream = pls.get("playlist", "File1")
+            if stream is None:
+                self.log.error("Playlist found, but no stream found on the playlist")
+                return
+            self.player.play(stream)
+        else:
+            self.log.error("No valid playlist in " + pls_path)
+            return
+
+    def process_command(self, cmd):
+        """
+        :param cmd: Frame
+        :type cmd: str
+
+        :return nothing
+        :rtype: None
+        """
+        try:
+            ret = parse.search("src={:w}"+SEPARATOR, cmd)
+            if ret is not None and len(ret.fixed) != 0:
+                if SRC_YOUTUBE.lower() == ret.fixed[0].lower():
+                    ret = parse.search("link={}" + SEPARATOR, cmd)
+                    self.player.play(get_video_url(ret.fixed[0]))
+                elif SRC_RADIO.lower() == ret.fixed[0].lower():
+                    ret = parse.search("url={}" + SEPARATOR, cmd)
+                    if ret is not None and len(ret.fixed) != 0:
+                        self.player.play(ret.fixed[0])
+                        return
+                    ret = parse.search("link={}" + SEPARATOR, cmd)
+                    if ret is not None and len(ret.fixed) != 0:
+                        resp = requests.get(ret.fixed[0])
+                        if resp.status_code == 200:
+                            with open("playlist.pls", "wb") as playlist_file:
+                                playlist_file.write(resp.content)
+                            self.radio_playlist( os.path.abspath(playlist_file.name))
+                        return
+                    ret = parse.search("pls={}" + SEPARATOR, cmd)
+                    if ret is not None and len(ret.fixed) != 0:
+                        self.radio_playlist(ret.fixed[0])
+                        return
+                return
+
+            ret = parse.search("ctrl={:w}" + SEPARATOR, cmd)
+            if ret is not None and len(ret.fixed) != 0:
+                self.player.send_control(ret.fixed[0].lower())
+                return
+
+            ret = parse.search("cmd={:w}" + SEPARATOR, cmd)
+            if ret is not None and len(ret.fixed) != 0:
+                # TODO process commands
+                # TODO think of a way of saving/managing the added radio stations (local/remote?)
+                return
+
+        except Exception as err:
+            self.log.error("ERR: Couldn't process message" + err.message)
+            pass
+
 
 class MyLogger(object):
     def debug(self, msg):
@@ -81,116 +164,3 @@ def get_video_url(link):
         video = result
 
     return "\"" + video.get('url') + "\""
-
-
-class IRadio:
-    def __init__(self):
-        self.log.debug("dummy init")
-
-    def __init__(self, player_cmd=defRadioCMD):
-        """
-
-        :param player_cmd:  The alternative radio command
-         :type player_cmd: str
-        """
-        self.radioCMD = player_cmd
-        self.initialize_commons()
-
-    def initialize_commons(self):
-        self.log = logging.getLogger("IRadio")
-        streamH = logging.StreamHandler(sys.stderr)
-        self.log.setLevel(logging.DEBUG)
-        self.log.addHandler(streamH)
-        self.log.debug("log inited")
-        self.p = 0
-
-    def play(self, stream):
-        """
-        :param stream: The stream to open (URL or Path)
-        :type stream: str
-
-        :return nothing
-        :rtype: None
-        """
-        if self.p:
-            self.stop()
-        fullCMD = self.radioCMD + " " + stream
-        #call the radio app and get the stdin
-        self.p = subprocess.Popen(fullCMD, shell=True, stdin=subprocess.PIPE, preexec_fn=os.setsid)
-        self.log.info("Radio App started!")
-
-    def stop(self):
-        if self.p:
-            os.killpg(os.getpgid(self.p.pid), signal.SIGTERM)
-
-    def sendCmd(self, cmd):
-        self.p.stdin.write( cmd )
-        self.p.stdin.flush()
-        self.log.info("Command {0} sent to radio".format(cmd))
-
-    def radio_playlist(self, pls_path):
-        """
-
-        :param pls_path: The playlist file path
-        :type pls_path: str
-        :return: nothing
-        """
-        pls = ConfigParser.ConfigParser()
-        pls.read(pls_path)
-        if "playlist" in pls.sections():
-            self.log.debug("found valid playlist in " + pls_path)
-            n_entries = pls.get("playlist", "NumberOfEntries")
-            if n_entries is None:
-                self.log.error("Playlist found, but no entries found on the playlist")
-                return
-            stream = pls.get("playlist", "File1")
-            if stream is None:
-                self.log.error("Playlist found, but no stream found on the playlist")
-                return
-            self.play(stream)
-        else:
-            self.log.error("No valid playlist in " + pls_path)
-            return
-
-    def process_command(self, cmd):
-        """
-        :param cmd: Frame
-        :type cmd: str
-
-        :return nothing
-        :rtype: None
-        """
-        try:
-            ret = parse.search("src={:w}"+SEPARATOR, cmd)
-            if ret is not None and len(ret.fixed) != 0:
-                if SRC_YOUTUBE.lower() == ret.fixed[0].lower():
-                    ret = parse.search("link={}" + SEPARATOR, cmd)
-                    self.play(get_video_url(ret.fixed[0]))
-                elif SRC_RADIO.lower() == ret.fixed[0].lower():
-                    ret = parse.search("url={}" + SEPARATOR, cmd)
-                    if ret is not None and len(ret.fixed) != 0:
-                        self.play(ret.fixed[0])
-                        return
-                    ret = parse.search("link={}" + SEPARATOR, cmd)
-                    if ret is not None and len(ret.fixed) != 0:
-                        resp = requests.get(ret.fixed[0])
-                        if resp.status_code == 200:
-                            with open("playlist.pls", "wb") as playlist_file:
-                                playlist_file.write(resp.content)
-                            self.radio_playlist( os.path.abspath(playlist_file.name))
-                        return
-                    ret = parse.search("pls={}" + SEPARATOR, cmd)
-                    if ret is not None and len(ret.fixed) != 0:
-                        self.radio_playlist(ret.fixed[0])
-                        return
-                return
-
-            ret = parse.search("cmd={:w}" + SEPARATOR, cmd)
-            if ret is not None and len(ret.fixed) != 0:
-                if CMD_PLAY.lower() == ret.fixed[0].lower():
-                    self.sendCmd(OMX_PLAY)
-
-
-        except Exception as err:
-            self.log.error("ERR: Couldn't process message" + err.message)
-            pass
