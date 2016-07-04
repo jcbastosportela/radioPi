@@ -37,6 +37,9 @@ class IRadio:
     def play(self, path):
         self.player.play(path)
 
+    def stop(self):
+        self.player.stop()
+
     def radio_playlist(self, pls_path):
         """
 
