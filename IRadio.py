@@ -91,6 +91,17 @@ class IRadio:
         self.player.play(url)
         self.display.setNowPlaying(title)
 
+    def local_track(self, path):
+        """
+
+        :param path: the path to the local resource
+        :type path: str
+        :return: none
+        """
+        self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
+        self.player.play(path)
+        self.display.setNowPlaying(path.substring(path.lastIndexOf("\\")+1, path.length()))
+
     def mediaParse(self, media):
         """
 
@@ -104,7 +115,11 @@ class IRadio:
             self.log.debug("Link seems to be youtube...")
             self.youtube_track(media)
             return
-        # check if media is local content
+        # check if media is local content by checking if file exists
+        if os.path.isfile(media):
+            self.log.debug("Seems to be local content...")
+            self.local_track(media)
+
 
     def process_command(self, cmd):
         """
