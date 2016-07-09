@@ -143,8 +143,8 @@ def __init__():
     log.info("Socket now listening")
 
     #myRadio = IRadio.IRadio(get_video_url("https://www.youtube.com/watch?v=hn3wJ1_1Zsg"))
-    #myRadio.play("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
-    myRadio.play("mms://a684.l880722683.c8807.e.lm.akamaistream.net/D/684/8807/v0001/reflector:22683")
+    myRadio.play("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
+    #myRadio.play("mms://a684.l880722683.c8807.e.lm.akamaistream.net/D/684/8807/v0001/reflector:22683")
     wait_conn_thread = waitTCPConnHandler(1, "wait_conn_thread", sock)
     wait_conn_thread.setDaemon(1)
     wait_conn_thread.start()
@@ -171,10 +171,6 @@ def at_exit():
 # In case is called from terminal
 if __name__ == "__main__":
     import sys
-
-    print chr(2)
-    print chr(3)
-    print chr(29)
     # register the program exit
     atexit.register(at_exit)
 
