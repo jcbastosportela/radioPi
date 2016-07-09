@@ -16,7 +16,7 @@ RAD_CMD = "omxplayer"
 myRadio = IRadio.IRadio()
 wait_conn_thread = threading.Thread()
 HOST = ""
-PORT = 1238
+PORT = 1234
 BUFF = 1024
 FRAME_HEAD = chr(0x02)  #STX
 FRAME_TAIL = chr(0x03)  #ETX
@@ -140,7 +140,7 @@ def __init__():
 
     # Start listening on socket
     sock.listen(10)
-    log.info("Socket now listening")
+    log.info("Socket now listening in port {0}".format(PORT))
 
     #myRadio = IRadio.IRadio(get_video_url("https://www.youtube.com/watch?v=hn3wJ1_1Zsg"))
     myRadio.play("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
@@ -177,12 +177,17 @@ if __name__ == "__main__":
     # process arguments
     args_parse = argparse.ArgumentParser(description="radioPi args")
     args_parse.add_argument('--player', help="The media player command (default omxplayer)")
+    args_parse.add_argument('--ip', help="The IP to allow connection (default {0})".format(HOST))
+    args_parse.add_argument('--port', help="The port to listen (default {0})".format(PORT))
     args = args_parse.parse_args()
 
     # if another player was passed as argument
     if args.player is not None:
         myRadio = IRadio.IRadio(args.player)
-
+    if args.ip is not None:
+        HOST = args.ip
+    if args.port is not None:
+        PORT = args.port
     __init__()
 
 
