@@ -187,7 +187,11 @@ if __name__ == "__main__":
     if args.ip is not None:
         HOST = args.ip
     if args.port is not None:
-        PORT = args.port
+        try:
+            PORT = int(args.port)
+        except Exception as ex:
+            log.error("The Port must be integer" + ex.message)
+            exit()
     __init__()
 
 

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+
+import subprocess
 import youtube_dl
 import logging
 import os
@@ -16,6 +18,13 @@ defRadioCMD = IPlayer.PLAYER_OMX
 #definition of possible sources
 SRC_YOUTUBE = "youtube"
 SRC_RADIO = "radio"
+SRC_MEDIA = "media"     # generic - will attempt to parse and get the stream
+
+#define the Media Parsing Keys
+MEDIA_KEY_YOUTUBE = "youtu"
+
+#definition of possible system commands
+CMD_POWER = "pwr"
 
 
 class IRadio:
@@ -68,6 +77,35 @@ class IRadio:
             self.log.error("No valid playlist in " + pls_path)
             return
 
+    def youtube_track(self, link):
+        """
+
+        :param link: the youtube content Link
+        :type link: str
+        :return: none
+        """
+        # youtube allways has to play with OMX
+        # TODO all the https contents must be played via OMX
+        self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
+        url, title = get_video_url(link)
+        self.player.play(url)
+        self.display.setNowPlaying(title)
+
+    def mediaParse(self, media):
+        """
+
+        :param media: the media content string
+        :type media: str
+
+        :return: none
+        """
+        #check if it's youtube
+        if media.__contains__(MEDIA_KEY_YOUTUBE):
+            self.log.debug("Link seems to be youtube...")
+            self.youtube_track(media)
+            return
+        # check if media is local content
+
     def process_command(self, cmd):
         """
         :param cmd: Frame
@@ -80,15 +118,22 @@ class IRadio:
         try:
             ret = parse.search("src={:w}"+SEPARATOR, cmd)
             if ret is not None and len(ret.fixed) != 0:
+                if SRC_MEDIA.lower() == ret.fixed[0].lower():
+                    cmd = cmd - ("src="+ret.fixed[0])
+                    self.log.debug("Trying to find media in " + cmd)
+                    ret = parse.search(SEPARATOR + "{}" + SEPARATOR, cmd)
+                    if ret is not None and len(ret.fixed) != 0:
+                        self.log.debug("Trying to parse " + ret.fixed[0])
+                        self.mediaParse(ret.fixed[0])
+                        return
+
                 if SRC_YOUTUBE.lower() == ret.fixed[0].lower():
-                    # youtube allways has to play with OMX
-                    # TODO all the https contents must be played via OMX
-                    self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
                     ret = parse.search("link={}" + SEPARATOR, cmd)
-                    url, title = get_video_url(ret.fixed[0])
-                    self.player.play(url)
-                    self.display.setNowPlaying(title)
-                elif SRC_RADIO.lower() == ret.fixed[0].lower():
+                    if ret is not None:
+                        self.youtube_track(ret.fixed[0])
+                    return
+
+                if SRC_RADIO.lower() == ret.fixed[0].lower():
                     # TODO get the playing content and send to display
                     # radio allways has to play with MPlayer
                     self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
@@ -117,6 +162,10 @@ class IRadio:
 
             ret = parse.search("cmd={:w}" + SEPARATOR, cmd)
             if ret is not None and len(ret.fixed) != 0:
+                # Is Power Off?
+                if CMD_POWER.lower() == ret.fixed[0].lower():
+                    self.p = subprocess.Popen("sudo init 0", shell=True, stdin=subprocess.PIPE, preexec_fn=os.setsid)
+                    return
                 # TODO process commands
                 # TODO think of a way of saving/managing the added radio stations (local/remote?)
                 return
