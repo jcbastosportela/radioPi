@@ -8,6 +8,7 @@ import parse
 import requests
 import ConfigParser
 import IPlayer
+import IDisplay
 
 SEPARATOR = chr(29)     # GS
 defRadioCMD = IPlayer.PLAYER_OMX
@@ -18,12 +19,15 @@ SRC_RADIO = "radio"
 
 
 class IRadio:
+    def __init__(self):
+        print ""
+
     def __init__(self, player_cmd=defRadioCMD):
         """
-
         :param player_cmd:  The alternative radio command
          :type player_cmd: str
         """
+        self.display = IDisplay.IDisplay()
         self.player = IPlayer.IPlayer(player_cmd)
         self.initialize_commons()
 
@@ -72,13 +76,22 @@ class IRadio:
         :return nothing
         :rtype: None
         """
+        # TODO the link parse must be more cleaver, without the need of the extra comm protocol
         try:
             ret = parse.search("src={:w}"+SEPARATOR, cmd)
             if ret is not None and len(ret.fixed) != 0:
                 if SRC_YOUTUBE.lower() == ret.fixed[0].lower():
+                    # youtube allways has to play with OMX
+                    # TODO all the https contents must be played via OMX
+                    self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
                     ret = parse.search("link={}" + SEPARATOR, cmd)
-                    self.player.play(get_video_url(ret.fixed[0]))
+                    url, title = get_video_url(ret.fixed[0])
+                    self.player.play(url)
+                    self.display.setNowPlaying(title)
                 elif SRC_RADIO.lower() == ret.fixed[0].lower():
+                    # TODO get the playing content and send to display
+                    # radio allways has to play with MPlayer
+                    self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
                     ret = parse.search("url={}" + SEPARATOR, cmd)
                     if ret is not None and len(ret.fixed) != 0:
                         self.player.play(ret.fixed[0])
@@ -140,8 +153,8 @@ def get_video_url(link):
     :param link: The link to parse URL
     :type link: unicode
 
-    :return: the parsed URL for the video
-    :rtype: str
+    :return: the parsed URL for the video, title
+    :rtype: {str,str}
     """
     ydl_opts = {
         'format': 'bestaudio/best',
@@ -166,4 +179,4 @@ def get_video_url(link):
         # Just a video
         video = result
 
-    return "\"" + video.get('url') + "\""
+    return ("\"" + video.get('url') + "\"", video.get('title'))
