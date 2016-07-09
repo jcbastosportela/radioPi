@@ -119,7 +119,7 @@ class IRadio:
             ret = parse.search("src={:w}"+SEPARATOR, cmd)
             if ret is not None and len(ret.fixed) != 0:
                 if SRC_MEDIA.lower() == ret.fixed[0].lower():
-                    cmd = cmd - ("src="+ret.fixed[0])
+                    cmd = cmd.replace("src="+ret.fixed[0], "")
                     self.log.debug("Trying to find media in " + cmd)
                     ret = parse.search(SEPARATOR + "{}" + SEPARATOR, cmd)
                     if ret is not None and len(ret.fixed) != 0:

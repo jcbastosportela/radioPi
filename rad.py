@@ -190,7 +190,7 @@ if __name__ == "__main__":
         try:
             PORT = int(args.port)
         except Exception as ex:
-            log.error("The Port must be integer" + ex.message)
+            print("The Port must be integer" + ex.message)
             exit()
     __init__()
 
