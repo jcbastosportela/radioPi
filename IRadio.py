@@ -86,7 +86,8 @@ class IRadio:
         """
         # youtube allways has to play with OMX
         self.player.stop()      # before creating new stop a potentially playing player
-        self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
+        #self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
+        self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
         url, title = get_video_url(link)
         self.player.play(url)
         self.display.setNowPlaying(title)

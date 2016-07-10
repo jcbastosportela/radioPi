@@ -6,7 +6,7 @@ import signal
 import subprocess
 
 PLAYER_OMX = "omxplayer"
-PLAYER_MPLAYER = "mplayer"
+PLAYER_MPLAYER = "mplayer -slave -quiet"    # the MPlayer is launched as slave support several commands
 
 # definition of possible commands
 CTRL_PLAY = "play"
@@ -59,7 +59,7 @@ class IPlayer:
         :return nothing
         :rtype: None
         """
-        if self.p:
+        if self.p and self.cmd == PLAYER_OMX:
             self.stop()
         fullCMD = self.cmd + " " + stream
         # call the radio app and get the stdin
