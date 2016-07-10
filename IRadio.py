@@ -85,7 +85,7 @@ class IRadio:
         :return: none
         """
         # youtube allways has to play with OMX
-        # TODO all the https contents must be played via OMX
+        self.player.stop()      # before creating new stop a potentially playing player
         self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
         url, title = get_video_url(link)
         self.player.play(url)
@@ -98,9 +98,12 @@ class IRadio:
         :type path: str
         :return: none
         """
-        self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
+        self.player.stop()      # before creating new stop a potentially playing player
+        self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
+        path = os.path.normpath(path)
+        path = path.replace(" ", "\ ")
         self.player.play(path)
-        self.display.setNowPlaying(path.substring(path.lastIndexOf("\\")+1, path.length()))
+        self.display.setNowPlaying(path.substring(path.lastIndexOf("/")+1, path.length()))
 
     def mediaParse(self, media):
         """
@@ -119,6 +122,16 @@ class IRadio:
         if os.path.isfile(media):
             self.log.debug("Seems to be local content...")
             self.local_track(media)
+            return
+        # check is the media is local folder
+        if os.path.isdir(media):
+            self.log.debug("Seems to be local folder...")
+            # TODO instead of using MPlayer playlist use local playlist for homogeneous managment
+            if media.endswith("/"):
+                media = media + "*"
+            else:
+                media = media + "/*"
+            self.local_track(media)
 
 
     def process_command(self, cmd):
@@ -129,7 +142,6 @@ class IRadio:
         :return nothing
         :rtype: None
         """
-        # TODO the link parse must be more cleaver, without the need of the extra comm protocol
         try:
             ret = parse.search("src={:w}"+SEPARATOR, cmd)
             if ret is not None and len(ret.fixed) != 0:

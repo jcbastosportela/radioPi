@@ -16,7 +16,9 @@ ConfigParser
 src=radiolink=http://radyo.itu.edu.tr/ITU_Radio_Jazz_Blues.pls
 src=radiolink=http://radyo.itu.edu.tr/ITU_Radio_Classical.pls
 src=radiourl=http://voyagewmp.radyotvonline.com
-src=radiohttps://www.youtube.com/watch?v=wDjeBNv6ip0
+src=mediahttps://www.youtube.com/watch?v=wDjeBNv6ip0
+src=media/home/porty/Music/TUGAS/Carlos Paiao - Cinderela.mp3
+src=media/home/porty/Music/TUGAS
 
 .Example of control commands:
 ctrl=play

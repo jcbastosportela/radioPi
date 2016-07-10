@@ -67,8 +67,12 @@ class IPlayer:
         self.log.info("Radio App started!")
 
     def stop(self):
-        if self.p:
-            os.killpg(os.getpgid(self.p.pid), signal.SIGTERM)
+        try:
+            if self.p:
+                os.killpg(os.getpgid(self.p.pid), signal.SIGTERM)
+        except Exception as err:
+            self.log.debug("Failed stopping player")
+            pass
 
     def send_control(self, ctrl):
         if ctrl == CTRL_PLAY:
