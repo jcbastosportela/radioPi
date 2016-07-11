@@ -28,6 +28,8 @@ CMD_POWER = "pwr"
 
 
 class IRadio:
+    NOW_PLAYING = "NAV"
+
     def __init__(self):
         print ""
 
@@ -87,7 +89,9 @@ class IRadio:
         self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
         url, title = get_video_url(link)
         self.player.play(url)
-        self.display.setNowPlaying(title)
+        #self.display.setNowPlaying(title)
+        self.log.debug("playing " + title)
+        IRadio.NOW_PLAYING = title
 
     def local_track(self, path):
         """
@@ -100,7 +104,9 @@ class IRadio:
         path = os.path.normpath(path)
         path = path.replace(" ", "\ ")
         self.player.play(path)
-        self.display.setNowPlaying(path.substring(path.lastIndexOf("/")+1, path.length()))
+        #self.display.setNowPlaying(path.substring(path.lastIndexOf("/")+1, path.length()))
+        self.log.debug("playing " + path.substring(path.lastIndexOf("/")+1, path.length()))
+        IRadio.NOW_PLAYING = path.substring(path.lastIndexOf("/")+1, path.length())
 
     def mediaParse(self, media):
         """
@@ -130,7 +136,9 @@ class IRadio:
             self.player.stop()  # before creating new stop a potentially playing player
             self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
             self.player.play(media)
-            self.display.setNowPlaying(media)
+            #self.display.setNowPlaying(media)
+        IRadio.NOW_PLAYING = media
+        self.log.debug("playing " + media)
 
 
     def process_command(self, cmd):
@@ -199,15 +207,16 @@ class IRadio:
             self.log.error("ERR: Couldn't process message" + err.message)
             pass
 
-    def get_now_playing(self):
-        """
-        :return: the Playing content
-        :rtype: str
-        """
-        # TODO implement
-        self.log.debug("get_now_playing")
-        # MPlayer allows to get via API
-        #if self.player.cmd == IPlayer.PLAYER_MPLAYER:
+
+def get_now_playing():
+    """
+    :return: the Playing content
+    :rtype: str
+    """
+    # TODO implement
+    return IRadio.NOW_PLAYING
+    # MPlayer allows to get via API
+    #if self.player.cmd == IPlayer.PLAYER_MPLAYER:
 
 
 class MyLogger(object):
