@@ -12,7 +12,6 @@ import argparse
 #http://7509.live.streamtheworld.com:443/METRO_FM_SC
 # init stuffs
 log = logging.getLogger("Main")
-RAD_CMD = "omxplayer"
 myRadio = IRadio.IRadio()
 wait_conn_thread = threading.Thread()
 HOST = ""

@@ -55,7 +55,6 @@ class IRadio:
 
     def radio_playlist(self, pls_path):
         """
-
         :param pls_path: The playlist file path
         :type pls_path: str
         :return: nothing
@@ -79,14 +78,12 @@ class IRadio:
 
     def youtube_track(self, link):
         """
-
         :param link: the youtube content Link
         :type link: str
         :return: none
         """
         # youtube allways has to play with OMX
         self.player.stop()      # before creating new stop a potentially playing player
-        #self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
         self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
         url, title = get_video_url(link)
         self.player.play(url)
@@ -94,7 +91,6 @@ class IRadio:
 
     def local_track(self, path):
         """
-
         :param path: the path to the local resource
         :type path: str
         :return: none
@@ -108,31 +104,33 @@ class IRadio:
 
     def mediaParse(self, media):
         """
-
         :param media: the media content string
         :type media: str
 
         :return: none
         """
-        #check if it's youtube
+        # check if it's youtube
         if media.__contains__(MEDIA_KEY_YOUTUBE):
             self.log.debug("Link seems to be youtube...")
             self.youtube_track(media)
-            return
         # check if media is local content by checking if file exists
-        if os.path.isfile(media):
+        elif os.path.isfile(media):
             self.log.debug("Seems to be local content...")
             self.local_track(media)
-            return
         # check is the media is local folder
-        if os.path.isdir(media):
+        elif os.path.isdir(media):
             self.log.debug("Seems to be local folder...")
-            # TODO instead of using MPlayer playlist use local playlist for homogeneous managment
             if media.endswith("/"):
                 media = media + "*"
             else:
                 media = media + "/*"
             self.local_track(media)
+        # attempt playing whatever it is with MPlayer
+        else:
+            self.player.stop()  # before creating new stop a potentially playing player
+            self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
+            self.player.play(media)
+            self.display.setNowPlaying(media)
 
 
     def process_command(self, cmd):
@@ -162,7 +160,6 @@ class IRadio:
                     return
 
                 if SRC_RADIO.lower() == ret.fixed[0].lower():
-                    # TODO get the playing content and send to display
                     # radio allways has to play with MPlayer
                     self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
                     ret = parse.search("url={}" + SEPARATOR, cmd)
@@ -201,6 +198,16 @@ class IRadio:
         except Exception as err:
             self.log.error("ERR: Couldn't process message" + err.message)
             pass
+
+    def get_now_playing(self):
+        """
+        :return: the Playing content
+        :rtype: str
+        """
+        # TODO implement
+        self.log.debug("get_now_playing")
+        # MPlayer allows to get via API
+        #if self.player.cmd == IPlayer.PLAYER_MPLAYER:
 
 
 class MyLogger(object):
