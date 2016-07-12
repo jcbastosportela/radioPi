@@ -22,6 +22,8 @@ SRC_MEDIA = "media"     # generic - will attempt to parse and get the stream
 
 #define the Media Parsing Keys
 MEDIA_KEY_YOUTUBE = "youtu"
+MEDIA_KEY_HTTP = "http"
+MEDIA_KEY_PLAYLIST= "pls"
 
 #definition of possible system commands
 CMD_POWER = "pwr"
@@ -89,7 +91,6 @@ class IRadio:
         self.player = IPlayer.IPlayer(IPlayer.PLAYER_OMX)
         url, title = get_video_url(link)
         self.player.play(url)
-        #self.display.setNowPlaying(title)
         self.log.debug("playing " + title)
         IRadio.NOW_PLAYING = title
 
@@ -104,9 +105,22 @@ class IRadio:
         path = os.path.normpath(path)
         path = path.replace(" ", "\ ")
         self.player.play(path)
-        #self.display.setNowPlaying(path.substring(path.lastIndexOf("/")+1, path.length()))
         self.log.debug("playing " + path.substring(path.lastIndexOf("/")+1, path.length()))
         IRadio.NOW_PLAYING = path.substring(path.lastIndexOf("/")+1, path.length())
+
+    def online_playlist(self, link):
+        """
+
+        :param link: the link of the playlist
+        :type link: str
+        :return: nothing
+        """
+        self.player.stop()      # before creating new stop a potentially playing player
+        self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
+        self.player.play("-playlist " + link)
+        self.log.debug("playing " + link)
+        IRadio.NOW_PLAYING = link;
+
 
     def mediaParse(self, media):
         """
@@ -131,6 +145,11 @@ class IRadio:
             else:
                 media = media + "/*"
             self.local_track(media)
+        # check if is online playlist
+        elif media.startswith(MEDIA_KEY_HTTP) and media.endswith(MEDIA_KEY_PLAYLIST):
+            self.log.debug("Seems online playlist...")
+            self.online_playlist(media)
+
         # attempt playing whatever it is with MPlayer
         else:
             self.player.stop()  # before creating new stop a potentially playing player
@@ -172,19 +191,23 @@ class IRadio:
                     self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
                     ret = parse.search("url={}" + SEPARATOR, cmd)
                     if ret is not None and len(ret.fixed) != 0:
-                        self.player.play(ret.fixed[0])
+                        self.mediaParse(ret.fixed[0])
+                        #self.player.play(ret.fixed[0])
                         return
                     ret = parse.search("link={}" + SEPARATOR, cmd)
                     if ret is not None and len(ret.fixed) != 0:
-                        resp = requests.get(ret.fixed[0])
+                        self.mediaParse(ret.fixed[0])
+                        """resp = requests.get(ret.fixed[0])
                         if resp.status_code == 200:
                             with open("playlist.pls", "wb") as playlist_file:
                                 playlist_file.write(resp.content)
                             self.radio_playlist( os.path.abspath(playlist_file.name))
+                        """
                         return
                     ret = parse.search("pls={}" + SEPARATOR, cmd)
                     if ret is not None and len(ret.fixed) != 0:
-                        self.radio_playlist(ret.fixed[0])
+                        self.mediaParse(ret.fixed[0])
+                        #self.radio_playlist(ret.fixed[0])
                         return
                 return
 
@@ -220,6 +243,7 @@ class IRadio:
                 try:
                     line = self.player.read_stdout()
                     if line.startswith('ICY Info:'):
+                        self.log.debug("\t\t" + line)
                         IRadio.NOW_PLAYING = ""
                         ret = parse.search("StreamTitle='{}';", line)
                         if ret is not None and len(ret.fixed) != 0:
