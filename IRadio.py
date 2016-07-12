@@ -188,7 +188,7 @@ class IRadio:
 
                 if SRC_RADIO.lower() == ret.fixed[0].lower():
                     # radio allways has to play with MPlayer
-                    self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
+                    #self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
                     ret = parse.search("url={}" + SEPARATOR, cmd)
                     if ret is not None and len(ret.fixed) != 0:
                         self.mediaParse(ret.fixed[0])

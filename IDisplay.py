@@ -9,8 +9,8 @@ from PIL import ImageDraw
 from PIL import ImageFont
 import IRadio
 
-
 RST = 24
+SCROLL_SPEED = 5
 
 class IDisplay:
     def __init__(self):
@@ -60,7 +60,7 @@ class update_display(threading.Thread):
         self.image = Image.new('1', (self.disp.width, self.disp.height))
 
         self.draw = ImageDraw.Draw(self.image)
-        self.draw.text((0, 0), "Now paying: ", font=self.font_head, fill=255)
+        self.draw.text((0, 0), "Now playing: ", font=self.font_head, fill=255)
         self.disp.image(self.image)
         self.disp.display()
 
@@ -95,7 +95,7 @@ class update_display(threading.Thread):
                 time.sleep(0.01)               # Sleep 100ms
 
                 if b_scroll:
-                    xpos -= 3
+                    xpos -= SCROLL_SPEED
                     if -xpos <= maxwidth:
                         self.draw.rectangle((0, self.fontsize_head, self.disp.width, self.disp.height - self.fontsize_head),
                                             outline=0, fill=0)
