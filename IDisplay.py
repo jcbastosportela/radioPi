@@ -97,7 +97,7 @@ class update_display(threading.Thread):
                 if b_scroll:
                     xpos -= SCROLL_SPEED
                     if -xpos <= maxwidth:
-                        self.draw.rectangle((0, self.fontsize_head, self.disp.width, self.disp.height - self.fontsize_head),
+                        self.draw.rectangle((0, self.fontsize_head, self.disp.width, self.fontsize_title),
                                             outline=0, fill=0)
                         self.draw.text((xpos, self.fontsize_head), self.now_playing, font=self.font_title, fill=255)
                         self.disp.image(self.image)

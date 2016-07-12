@@ -188,6 +188,7 @@ if __name__ == "__main__":
     args_parse.add_argument('--player', help="The media player command (default omxplayer)")
     args_parse.add_argument('--ip', help="The IP to allow connection (default {0})".format(HOST))
     args_parse.add_argument('--port', help="The port to listen (default {0})".format(PORT))
+    args_parse.add_argument('--nodisp', help="Disable the usage of OLED SSD1306/9")
     args = args_parse.parse_args()
 
     # if another player was passed as argument
@@ -201,6 +202,8 @@ if __name__ == "__main__":
         except Exception as ex:
             print("The Port must be integer" + ex.message)
             exit()
+    if args.nodisp is not None:
+        print("Disabling OLED display")
     __init__()
 
 
