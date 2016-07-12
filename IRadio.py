@@ -38,8 +38,8 @@ class IRadio:
         :param player_cmd:  The alternative radio command
          :type player_cmd: str
         """
-        self.display = IDisplay.IDisplay()
         self.player = IPlayer.IPlayer(player_cmd)
+        self.display = IDisplay.IDisplay(self)
         self.initialize_commons()
 
     def initialize_commons(self):
@@ -47,7 +47,7 @@ class IRadio:
         streamH = logging.StreamHandler(sys.stderr)
         self.log.setLevel(logging.DEBUG)
         self.log.addHandler(streamH)
-        self.log.debug("log inited")
+        self.log.debug("IRadio log inited")
 
     def play(self, path):
         self.player.play(path)
@@ -208,15 +208,28 @@ class IRadio:
             pass
 
 
-def get_now_playing():
-    """
-    :return: the Playing content
-    :rtype: str
-    """
-    # TODO implement
-    return IRadio.NOW_PLAYING
-    # MPlayer allows to get via API
-    #if self.player.cmd == IPlayer.PLAYER_MPLAYER:
+    def get_now_playing(self):
+        """
+        :return: the Playing content
+        :rtype: str
+        """
+        # TODO implement
+        # MPlayer allows to get via API
+        if self.player.cmd == IPlayer.PLAYER_MPLAYER:
+            while 1:
+                try:
+                    line = self.player.read_stdout()
+                    if line.startswith('ICY Info:'):
+                        IRadio.NOW_PLAYING = ""
+                        ret = parse.search("StreamTitle='{}';", line)
+                        if ret is not None and len(ret.fixed) != 0:
+                            self.log.debug("sending " + ret.fixed[0])
+                            IRadio.NOW_PLAYING = ret.fixed[0]
+                        return IRadio.NOW_PLAYING
+                except Exception as err:
+                    return IRadio.NOW_PLAYING
+        else:
+            return IRadio.NOW_PLAYING
 
 
 class MyLogger(object):

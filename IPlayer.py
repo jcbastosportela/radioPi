@@ -4,6 +4,13 @@ import sys
 import os
 import signal
 import subprocess
+from threading  import Thread
+try:
+    from Queue import Queue, Empty
+except ImportError:
+    from queue import Queue, Empty  # python 3.x
+
+ON_POSIX = 'posix' in sys.builtin_module_names
 
 PLAYER_OMX = "omxplayer"
 PLAYER_MPLAYER = "mplayer -slave -quiet"    # the MPlayer is launched as slave support several commands
@@ -23,6 +30,12 @@ OMX_VOLDOWN = "-"
 MPLAYER_PLAY = "p"
 MPLAYER_VOLUP = "0"
 MPLAYER_VOLDOWN = "9"
+
+
+def enqueue_output(out, queue):
+    for line in iter(out.readline, b''):
+        queue.put(line)
+    out.close()
 
 class IPlayer:
     def __init__(self):
@@ -63,7 +76,12 @@ class IPlayer:
             self.stop()
         fullCMD = self.cmd + " " + stream
         # call the radio app and get the stdin
-        self.p = subprocess.Popen(fullCMD, shell=True, stdin=subprocess.PIPE, preexec_fn=os.setsid)
+        self.p = subprocess.Popen(fullCMD, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT, preexec_fn=os.setsid, bufsize=1, close_fds=ON_POSIX)
+        self.q = Queue()
+        self.read_thread = Thread(target=enqueue_output, args=(self.p.stdout, self.q))
+        self.read_thread.daemon = True # thread dies with the program
+        self.read_thread.start()
         self.log.info("Radio App started!")
 
     def stop(self):
@@ -90,3 +108,7 @@ class IPlayer:
         self.p.stdin.write( ctrl )
         self.p.stdin.flush()
         self.log.info("Command {0} sent to radio".format(ctrl))
+
+    #def send_command(self, cmd):
+    def read_stdout(self):
+        return self.q.get_nowait()

@@ -22,33 +22,59 @@ FRAME_TAIL = chr(0x03)  #ETX
 TCP_TIMEOUT = 20
 
 class waitTCPConnHandler( threading.Thread):
-    def __init__(self, threadID, name, sock):
+    def __init__(self, threadID, name):
         """
 
         :param threadID: Thread's ID
         :type threadID: int
         :param name: Thread's name
         :type name: str
-        :param sock: The socket to wait connections
-        :type sock: socket
 
         :return: nothing
         """
         threading.Thread.__init__(self)
+
         self.threadID = threadID
         self.name = name
-        self.sock = sock
         self.comm_thread = threading.Thread()
 
     def run(self):
-        # now keep talking with the client
         while 1:
-            # wait to accept a connection - blocking call
-            conn, addr = self.sock.accept()
-            # log.info("Connected with {0} : {1}".format(addr[0], str(addr[1])))
-            # thread.start_new_thread(get_tcp_cmds_handler, (conn,))
-            self.comm_thread = getTCPCmdsHandler(1, "comm_thread", conn)
-            self.comm_thread.start()
+            try:
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                log.info("Socket created")
+                self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                # Bind socket to local host and port
+                try:
+                    self.sock.bind((HOST, PORT))
+                except socket.error as msg:
+                    log.error("Bind failed. Error Code : {0} Message {1}".format(msg[0], msg[1]))
+                    self.sys.exit()
+
+                log.info("Socket bind complete")
+
+                # Start listening on socket
+                self.sock.listen(10)
+                log.info("Socket now listening in port {0}".format(PORT))
+                # now keep talking with the client
+                while 1:
+                    try:
+                        # wait to accept a connection - blocking call
+                        conn, addr = self.sock.accept()
+                        # log.info("Connected with {0} : {1}".format(addr[0], str(addr[1])))
+                        # thread.start_new_thread(get_tcp_cmds_handler, (conn,))
+                        self.comm_thread = getTCPCmdsHandler(1, "comm_thread", conn)
+                        self.comm_thread.start()
+                    except Exception as err:
+                        log.error("Failed accepting connection: " + err.message)
+                        break   # try to bing again
+
+                self.comm_thread.__stop()
+                self.sock.close()
+            except Exception as err:
+                log.error("Error in bind: " + err.message + "\nTrying again!")
+                pass
+
 
     def __stop(self):
         try:
@@ -115,6 +141,8 @@ class getTCPCmdsHandler (threading.Thread):
             log.info("Going to process " + frame)
             myRadio.process_command(frame)
 
+        self.clientsock.close()
+
     def __stop(self):
         log.info("Stopping " + self.name)
         self.b_stop = True
@@ -125,26 +153,8 @@ def __init__():
     log.addHandler(streamH)
     log.setLevel(logging.DEBUG)
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    log.info("Socket created")
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    # Bind socket to local host and port
-    try:
-        sock.bind((HOST, PORT))
-    except socket.error as msg:
-        log.error("Bind failed. Error Code : {0} Message {1}".format(msg[0], msg[1]))
-        sys.exit()
-
-    log.info("Socket bind complete")
-
-    # Start listening on socket
-    sock.listen(10)
-    log.info("Socket now listening in port {0}".format(PORT))
-
-    #myRadio = IRadio.IRadio(get_video_url("https://www.youtube.com/watch?v=hn3wJ1_1Zsg"))
-    myRadio.play("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
-    #myRadio.play("mms://a684.l880722683.c8807.e.lm.akamaistream.net/D/684/8807/v0001/reflector:22683")
-    wait_conn_thread = waitTCPConnHandler(1, "wait_conn_thread", sock)
+    myRadio.mediaParse("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
+    wait_conn_thread = waitTCPConnHandler(1, "wait_conn_thread")
     wait_conn_thread.setDaemon(1)
     wait_conn_thread.start()
 
