@@ -9,6 +9,8 @@ import sys
 import parse
 import requests
 import ConfigParser
+import threading
+import time
 import IPlayer
 import IDisplay
 
@@ -30,55 +32,36 @@ CMD_POWER = "pwr"
 
 
 class IRadio:
-    NOW_PLAYING = "NAV"
+    NOW_PLAYING = "...nothing playing..."
 
     def __init__(self):
         print ""
 
-    def __init__(self, player_cmd=defRadioCMD):
+    def __init__(self, nodisp=False, player_cmd=defRadioCMD):
         """
         :param player_cmd:  The alternative radio command
          :type player_cmd: str
         """
         self.player = IPlayer.IPlayer(player_cmd)
-        self.display = IDisplay.IDisplay(self)
-        self.initialize_commons()
-
-    def initialize_commons(self):
+        if nodisp:
+            self.display = IDisplay.IDisplay_fake()
+        else:
+            self.display = IDisplay.IDisplay()
         self.log = logging.getLogger("IRadio")
         streamH = logging.StreamHandler(sys.stderr)
         self.log.setLevel(logging.DEBUG)
         self.log.addHandler(streamH)
         self.log.debug("IRadio log inited")
 
+        self.update_playing_thread = update_now_playing(1, "update_playing_thread", self.log, self.display)
+        self.update_playing_thread.setDaemon(1)
+        self.update_playing_thread.start()
+
     def play(self, path):
         self.player.play(path)
 
     def stop(self):
         self.player.stop()
-
-    def radio_playlist(self, pls_path):
-        """
-        :param pls_path: The playlist file path
-        :type pls_path: str
-        :return: nothing
-        """
-        pls = ConfigParser.ConfigParser()
-        pls.read(pls_path)
-        if "playlist" in pls.sections():
-            self.log.debug("found valid playlist in " + pls_path)
-            n_entries = pls.get("playlist", "NumberOfEntries")
-            if n_entries is None:
-                self.log.error("Playlist found, but no entries found on the playlist")
-                return
-            stream = pls.get("playlist", "File1")
-            if stream is None:
-                self.log.error("Playlist found, but no stream found on the playlist")
-                return
-            self.player.play(stream)
-        else:
-            self.log.error("No valid playlist in " + pls_path)
-            return
 
     def youtube_track(self, link):
         """
@@ -107,6 +90,29 @@ class IRadio:
         self.player.play(path)
         self.log.debug("playing " + path.substring(path.lastIndexOf("/")+1, path.length()))
         IRadio.NOW_PLAYING = path.substring(path.lastIndexOf("/")+1, path.length())
+
+    def local_playlist(self, pls_path):
+        """
+        :param pls_path: The playlist file path
+        :type pls_path: str
+        :return: nothing
+        """
+        pls = ConfigParser.ConfigParser()
+        pls.read(pls_path)
+        if "playlist" in pls.sections():
+            self.log.debug("found valid playlist in " + pls_path)
+            n_entries = pls.get("playlist", "NumberOfEntries")
+            if n_entries is None:
+                self.log.error("Playlist found, but no entries found on the playlist")
+                return
+            stream = pls.get("playlist", "File1")
+            if stream is None:
+                self.log.error("Playlist found, but no stream found on the playlist")
+                return
+            self.player.play(stream)
+        else:
+            self.log.error("No valid playlist in " + pls_path)
+            return
 
     def online_playlist(self, link):
         """
@@ -155,7 +161,6 @@ class IRadio:
             self.player.stop()  # before creating new stop a potentially playing player
             self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
             self.player.play(media)
-            #self.display.setNowPlaying(media)
         IRadio.NOW_PLAYING = media
         self.log.debug("playing " + media)
 
@@ -178,36 +183,6 @@ class IRadio:
                     if ret is not None and len(ret.fixed) != 0:
                         self.log.debug("Trying to parse " + ret.fixed[0])
                         self.mediaParse(ret.fixed[0])
-                        return
-
-                if SRC_YOUTUBE.lower() == ret.fixed[0].lower():
-                    ret = parse.search("link={}" + SEPARATOR, cmd)
-                    if ret is not None:
-                        self.youtube_track(ret.fixed[0])
-                    return
-
-                if SRC_RADIO.lower() == ret.fixed[0].lower():
-                    # radio allways has to play with MPlayer
-                    #self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
-                    ret = parse.search("url={}" + SEPARATOR, cmd)
-                    if ret is not None and len(ret.fixed) != 0:
-                        self.mediaParse(ret.fixed[0])
-                        #self.player.play(ret.fixed[0])
-                        return
-                    ret = parse.search("link={}" + SEPARATOR, cmd)
-                    if ret is not None and len(ret.fixed) != 0:
-                        self.mediaParse(ret.fixed[0])
-                        """resp = requests.get(ret.fixed[0])
-                        if resp.status_code == 200:
-                            with open("playlist.pls", "wb") as playlist_file:
-                                playlist_file.write(resp.content)
-                            self.radio_playlist( os.path.abspath(playlist_file.name))
-                        """
-                        return
-                    ret = parse.search("pls={}" + SEPARATOR, cmd)
-                    if ret is not None and len(ret.fixed) != 0:
-                        self.mediaParse(ret.fixed[0])
-                        #self.radio_playlist(ret.fixed[0])
                         return
                 return
 
@@ -254,6 +229,50 @@ class IRadio:
                     return IRadio.NOW_PLAYING
         else:
             return IRadio.NOW_PLAYING
+
+
+class update_now_playing(threading.Thread):
+    def __init__(self, threadID, name, logger, disp):
+        """
+
+        :param threadID: Thread's ID
+        :type threadID: int
+        :param name: Thread's name
+        :type name: str
+        :param logger: the logger
+        :type logger: Logger
+        :param disp: the display
+        :type disp: IDisplay.IDisplay
+
+        :return: nothing
+        """
+        threading.Thread.__init__(self)
+
+        self.log = logger
+        self.disp = disp
+
+        self.b_continue = True
+        self.now_playing = ""
+
+    def run(self):
+        # now keep updating
+        while self.b_continue:
+            try:
+                if self.now_playing != IRadio.NOW_PLAYING:
+                    self.now_playing = IRadio.NOW_PLAYING
+                    self.disp.set_now_playing(self.now_playing)
+                time.sleep(0.5)               # Sleep 500ms
+            except Exception as err:
+                self.log.error("Exception getting now playing: " + err.message)
+                pass
+
+
+    def __stop(self):
+        try:
+            self.b_continue = False
+        except Exception as err:
+            log.error("Excetion stopping thread " + err.message)
+            pass
 
 
 class MyLogger(object):

@@ -12,7 +12,7 @@ import argparse
 #http://7509.live.streamtheworld.com:443/METRO_FM_SC
 # init stuffs
 log = logging.getLogger("Main")
-myRadio = IRadio.IRadio()
+myRadio = 0 #IRadio.IRadio()
 wait_conn_thread = threading.Thread()
 HOST = ""
 PORT = 6666
@@ -148,11 +148,14 @@ class getTCPCmdsHandler (threading.Thread):
         self.b_stop = True
 
 
-def __init__():
+def __init__(nodisp=False):
+    global myRadio
     streamH = logging.StreamHandler(sys.stdout)
     log.addHandler(streamH)
     log.setLevel(logging.DEBUG)
 
+
+    myRadio = IRadio.IRadio(nodisp=nodisp)
     myRadio.mediaParse("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
     wait_conn_thread = waitTCPConnHandler(1, "wait_conn_thread")
     wait_conn_thread.setDaemon(1)
@@ -169,12 +172,16 @@ def __init__():
 
 
 def at_exit():
+    try:
+        myRadio.stop()
+    except Exception as err:
+        print err.message
+        pass
     log.info("exiting...")
     if wait_conn_thread.isAlive():
         log.info("killing...")
         wait_conn_thread.__stop()
         wait_conn_thread.join()
-    myRadio.stop()
 
 
 # In case is called from terminal
@@ -185,15 +192,17 @@ if __name__ == "__main__":
 
     # process arguments
     args_parse = argparse.ArgumentParser(description="radioPi args")
-    args_parse.add_argument('--player', help="The media player command (default omxplayer)")
+    #args_parse.add_argument('--player', help="The media player command (default omxplayer)")
     args_parse.add_argument('--ip', help="The IP to allow connection (default {0})".format(HOST))
     args_parse.add_argument('--port', help="The port to listen (default {0})".format(PORT))
-    args_parse.add_argument('--nodisp', help="Disable the usage of OLED SSD1306/9")
+    args_parse.add_argument('--nodisp', help="Disable the usage of OLED SSD1306/9 1->disable (default 0)")
     args = args_parse.parse_args()
 
+    nodisp = False  # by default we use display
+
     # if another player was passed as argument
-    if args.player is not None:
-        myRadio = IRadio.IRadio(args.player)
+    #if args.player is not None:
+    #    myRadio = IRadio.IRadio(args.player)
     if args.ip is not None:
         HOST = args.ip
     if args.port is not None:
@@ -203,8 +212,13 @@ if __name__ == "__main__":
             print("The Port must be integer" + ex.message)
             exit()
     if args.nodisp is not None:
-        print("Disabling OLED display")
-    __init__()
+        if args.nodisp == "1":
+            nodisp = True
+            print("Disabling OLED display")
+        elif args.nodisp != "0":
+            print("{0} is an invalid argument for --nodisp. Valid values are 0 and 1".format(args.nodisp))
+            exit()
+    __init__( nodisp )
 
 
 
