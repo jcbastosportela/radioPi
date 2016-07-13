@@ -37,12 +37,14 @@ class IRadio:
     def __init__(self):
         print ""
 
-    def __init__(self, nodisp=False, player_cmd=defRadioCMD):
+    def __init__(self, nodisp=False, prearg=""):
         """
-        :param player_cmd:  The alternative radio command
-         :type player_cmd: str
+        :param nodisp: Enables/Disables usage of OLED display
+        :type nodisp: bool
+        :param prearg: Argument to pass before player command
+        :type prearg: str
         """
-        self.player = IPlayer.IPlayer(player_cmd)
+        self.player = IPlayer.IPlayer(defRadioCMD, prearg)
         if nodisp:
             self.display = IDisplay.IDisplay_fake()
         else:
@@ -161,8 +163,8 @@ class IRadio:
             self.player.stop()  # before creating new stop a potentially playing player
             self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
             self.player.play(media)
-        IRadio.NOW_PLAYING = media
-        self.log.debug("playing " + media)
+            IRadio.NOW_PLAYING = media
+            self.log.debug("playing " + media)
 
 
     def process_command(self, cmd):

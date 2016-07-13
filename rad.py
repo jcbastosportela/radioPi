@@ -106,6 +106,7 @@ class getTCPCmdsHandler (threading.Thread):
         self.b_stop = False
 
     def run(self):
+        global myRadio
         self.clientsock.setblocking(0)
         frame = ""
         log.info("Waiting messages from TCP...\n")
@@ -148,14 +149,14 @@ class getTCPCmdsHandler (threading.Thread):
         self.b_stop = True
 
 
-def __init__(nodisp=False):
+def __init__(nodisp=False, cmd_prearg=""):
     global myRadio
     streamH = logging.StreamHandler(sys.stdout)
     log.addHandler(streamH)
     log.setLevel(logging.DEBUG)
 
 
-    myRadio = IRadio.IRadio(nodisp=nodisp)
+    myRadio = IRadio.IRadio(nodisp=nodisp, prearg=cmd_prearg)
     myRadio.mediaParse("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
     wait_conn_thread = waitTCPConnHandler(1, "wait_conn_thread")
     wait_conn_thread.setDaemon(1)
@@ -193,16 +194,20 @@ if __name__ == "__main__":
     # process arguments
     args_parse = argparse.ArgumentParser(description="radioPi args")
     #args_parse.add_argument('--player', help="The media player command (default omxplayer)")
+    args_parse.add_argument('--prearg', help="Argument to put before player call (e.g. torify for allowing playing radios at work :P)")
     args_parse.add_argument('--ip', help="The IP to allow connection (default {0})".format(HOST))
     args_parse.add_argument('--port', help="The port to listen (default {0})".format(PORT))
     args_parse.add_argument('--nodisp', help="Disable the usage of OLED SSD1306/9 1->disable (default 0)")
     args = args_parse.parse_args()
 
     nodisp = False  # by default we use display
+    prearg = ""     # by default no pre argument
 
     # if another player was passed as argument
     #if args.player is not None:
     #    myRadio = IRadio.IRadio(args.player)
+    if args.prearg is not None:
+        prearg = args.prearg
     if args.ip is not None:
         HOST = args.ip
     if args.port is not None:
@@ -218,7 +223,7 @@ if __name__ == "__main__":
         elif args.nodisp != "0":
             print("{0} is an invalid argument for --nodisp. Valid values are 0 and 1".format(args.nodisp))
             exit()
-    __init__( nodisp )
+    __init__( nodisp, prearg )
 
 
 

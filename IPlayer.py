@@ -38,11 +38,12 @@ def enqueue_output(out, queue):
     out.close()
 
 class IPlayer:
+    PRE_ARG = ""
     def __init__(self):
         # dummy
         self.exist = True
 
-    def __init__(self, player):
+    def __init__(self, player, prearg=False):
         self.p = 0
         self.log = logging.getLogger("IPlayer")
         streamH = logging.StreamHandler(sys.stderr)
@@ -50,6 +51,9 @@ class IPlayer:
         self.log.addHandler(streamH)
         self.log.debug("log inited")
 
+        if prearg is not False:
+            self.log.debug("Setting prearg " + prearg)
+            IPlayer.PRE_ARG = prearg        # this is global, because even when new instance is created we should use it
         self.cmd = player
         # by default always use MPlayer map
         self.ctrl_play = MPLAYER_PLAY
@@ -74,7 +78,10 @@ class IPlayer:
         """
         if self.p and self.cmd == PLAYER_OMX:
             self.stop()
-        fullCMD = self.cmd + " " + stream
+        if IPlayer.PRE_ARG != "":
+            fullCMD = IPlayer.PRE_ARG + " " + self.cmd + " " + stream
+        else:
+            fullCMD = self.cmd + " " + stream
         # call the radio app and get the stdin
         self.p = subprocess.Popen(fullCMD, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, preexec_fn=os.setsid, bufsize=1, close_fds=ON_POSIX)
