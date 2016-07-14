@@ -13,9 +13,14 @@ except:
 
 RST = 24
 SCROLL_SPEED = 5
+NOW_PLAYING_TXT = "Now playing: "
+DETAILS_TXT = "Details: "
 
 class IDisplay:
     NOW_PLAYING = ""
+    RADIO_NAME = ""
+    RADIO_GENRE = ""
+    RADIO_BITRATE = ""
     def __init__(self):
         """
 
@@ -35,6 +40,15 @@ class IDisplay:
 
     def set_now_playing(self, title):
         IDisplay.NOW_PLAYING = title
+
+    def set_radio_name(self, name):
+        IDisplay.RADIO_NAME = name
+
+    def set_radio_genre(self, genre):
+        IDisplay.RADIO_GENRE = genre
+
+    def set_radio_bitrate(self, br):
+        IDisplay.RADIO_BITRATE = br
 
 
 class update_display(threading.Thread):
@@ -60,57 +74,113 @@ class update_display(threading.Thread):
         self.disp.display()
 
         self.fontsize_head = 16
-        self.font_head = ImageFont.truetype('fonts/vermin_vibes_1989.ttf', self.fontsize_head)       # more fonts in http://www.dafont.com/bitmap.php
+        self.font_head = ImageFont.truetype('/home/pi/radio/fonts/vermin_vibes_1989.ttf', self.fontsize_head)       # more fonts in http://www.dafont.com/bitmap.php
 
         self.fontsize_title = 8
-        self.font_title = ImageFont.truetype('fonts/pixelmix.ttf', self.fontsize_title)
+        self.font_title = ImageFont.truetype('/home/pi/radio/fonts/pixelmix.ttf', self.fontsize_title)
+
+        self.fontsize_details = 16
+        self.font_details = ImageFont.truetype('/home/pi/radio/fonts/vermin_vibes_1989.ttf', self.fontsize_details)
 
         self.image = Image.new('1', (self.disp.width, self.disp.height))
 
         self.draw = ImageDraw.Draw(self.image)
-        self.draw.text((0, 0), "Now playing: ", font=self.font_head, fill=255)
+        self.draw.text((0, 0), NOW_PLAYING_TXT, font=self.font_head, fill=255)
+        self.draw.text((0, self.fontsize_head + self.fontsize_title), DETAILS_TXT, font=self.font_details, fill=255)
         self.disp.image(self.image)
         self.disp.display()
 
         self.b_continue = True
         self.now_playing = ""
+        self.radio_name = ""
+        self.radio_genre = ""
+        self.radio_bitrate = ""
 
     def run(self):
         # now keep updating
-        b_scroll = False
-        xpos = 0
+        b_scrl_title = False
+        b_scrl_rname = False
+        xpos_title = 0
+        xpos_rname = 0
+        y_rname = self.fontsize_head + self.fontsize_title + self.fontsize_details
+        y_rgen = y_rname + self.fontsize_title
         while self.b_continue:
             try:
+                if self.radio_name != IDisplay.RADIO_NAME:
+                    self.radio_name = IDisplay.RADIO_NAME
+                    self.log.debug(">>>>>>>> Radio Name: " + self.radio_name + "<<<<<<<<<<")
+
+                    txt =  self.radio_name
+                    if IDisplay.RADIO_BITRATE != "":
+                        txt += " @" + IDisplay.RADIO_BITRATE
+
+                    maxW_rname, unused = self.draw.textsize(txt, font=self.font_title)
+                    if maxW_rname > self.disp.width:
+                        xpos_rname = self.disp.width
+                        b_scrl_rname = True
+                    else:
+                        xpos_rname = 0
+                        b_scrl_rname = False
+
+                    self.draw.rectangle((0, y_rname, self.disp.width, y_rname + self.fontsize_title),
+                                        outline=0, fill=0)
+                    self.draw.text((0, y_rname), txt , font=self.font_title, fill=255)
+                    self.disp.image(self.image)
+                    self.disp.display()
+
+                if self.radio_genre != IDisplay.RADIO_GENRE:
+                    self.radio_genre = IDisplay.RADIO_GENRE
+                    self.log.debug(">>>>>>>> Radio Genre: " + self.radio_genre + "<<<<<<<<<<")
+
+                    self.draw.rectangle((0, y_rgen, self.disp.width, y_rgen + self.fontsize_details),
+                                        outline=0, fill=0)
+                    self.draw.text((0, y_rgen), self.radio_genre, font=self.font_title, fill=255)
+                    self.disp.image(self.image)
+                    self.disp.display()
+
                 if self.now_playing != IDisplay.NOW_PLAYING:
                     self.now_playing = IDisplay.NOW_PLAYING
                     self.log.debug(">>>>>>>> Now playing: "+self.now_playing+"<<<<<<<<<<")
                     # Write two lines of text.# Draw a black filled box to clear the image.
 
-                    maxwidth, unused = self.draw.textsize(self.now_playing, font=self.font_title)
-                    if maxwidth > self.disp.width:
-                        xpos = self.disp.width
-                        b_scroll = True
+                    maxW_title, unused = self.draw.textsize(self.now_playing, font=self.font_title)
+                    if maxW_title > self.disp.width:
+                        xpos_title = self.disp.width
+                        b_scrl_title = True
                     else:
-                        xpos = 0
-                        b_scroll = True
+                        xpos_title = 0
+                        b_scrl_title = False
 
-                    self.draw.rectangle((0, self.fontsize_head, self.disp.width, self.disp.height-self.fontsize_head),
+                    self.draw.rectangle( (0, self.fontsize_head, self.disp.width, self.fontsize_title + self.fontsize_head),
                                     outline=0, fill=0)
-                    self.draw.text((xpos, self.fontsize_head), self.now_playing, font=self.font_title, fill=255)
+                    self.draw.text((xpos_title, self.fontsize_head), self.now_playing, font=self.font_title, fill=255)
                     self.disp.image(self.image)
                     self.disp.display()
-                time.sleep(0.01)               # Sleep 100ms
 
-                if b_scroll:
-                    xpos -= SCROLL_SPEED
-                    if -xpos <= maxwidth:
-                        self.draw.rectangle((0, self.fontsize_head, self.disp.width, self.disp.height-self.fontsize_head),
-                                            outline=0, fill=0)
-                        self.draw.text((xpos, self.fontsize_head), self.now_playing, font=self.font_title, fill=255)
-                        self.disp.image(self.image)
-                        self.disp.display()
-                    else:
-                        xpos = self.disp.width
+                if b_scrl_title or b_scrl_rname:
+                    if b_scrl_title:
+                        xpos_title -= SCROLL_SPEED
+                        if -xpos_title <= maxW_title:
+                            self.draw.rectangle((0, self.fontsize_head, self.disp.width, self.fontsize_title+self.fontsize_head),
+                                                outline=0, fill=0)
+                            self.draw.text((xpos_title, self.fontsize_head), self.now_playing, font=self.font_title, fill=255)
+                        else:
+                            xpos_title = self.disp.width
+
+                    if b_scrl_rname:
+                        xpos_rname -= SCROLL_SPEED*2
+                        if -xpos_rname <= maxW_rname:
+                            self.draw.rectangle((0, y_rname, self.disp.width, y_rname + self.fontsize_title),
+                                                    outline=0, fill=0)
+                            self.draw.text((xpos_rname, y_rname), txt, font=self.font_title, fill=255)
+                        else:
+                            xpos_rname = self.disp.width
+
+                    self.disp.image(self.image)
+                    self.disp.display()
+                    time.sleep(0.01)  # Sleep 100ms
+                else:
+                    time.sleep(0.5)  # Sleep 100ms
             except Exception as err:
                 self.log.error("Exception getting now playing: " + err.message)
                 pass

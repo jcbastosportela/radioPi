@@ -48,8 +48,9 @@ class waitTCPConnHandler( threading.Thread):
                 try:
                     self.sock.bind((HOST, PORT))
                 except socket.error as msg:
-                    log.error("Bind failed. Error Code : {0} Message {1}".format(msg[0], msg[1]))
-                    self.sys.exit()
+                    log.error("Bind failed. Error Code: {0} Message: {1}".format(msg[0], msg[1]))
+                    time.sleep(1)   # rest a second
+                    continue
 
                 log.info("Socket bind complete")
 
@@ -73,7 +74,8 @@ class waitTCPConnHandler( threading.Thread):
                 self.sock.close()
             except Exception as err:
                 log.error("Error in bind: " + err.message + "\nTrying again!")
-                pass
+                time.sleep(1)   # rest a second
+                continue
 
 
     def __stop(self):
