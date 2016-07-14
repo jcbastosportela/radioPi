@@ -21,6 +21,7 @@ class IDisplay:
     RADIO_NAME = ""
     RADIO_GENRE = ""
     RADIO_BITRATE = ""
+    SRC = ""
     def __init__(self):
         """
 
@@ -50,6 +51,8 @@ class IDisplay:
     def set_radio_bitrate(self, br):
         IDisplay.RADIO_BITRATE = br
 
+    def set_src(self, src):
+        IDisplay.SRC = src
 
 class update_display(threading.Thread):
     def __init__(self, threadID, name, logger):
@@ -96,7 +99,13 @@ class update_display(threading.Thread):
         self.radio_genre = ""
         self.radio_bitrate = ""
 
+    #def show_animation(self):
+        #image = []
+        #for each frame in image:
+        #    print""
+
     def run(self):
+        #self.show_animation()
         # now keep updating
         b_scrl_title = False
         b_scrl_rname = False
@@ -213,6 +222,18 @@ class IDisplay_fake:
 
     def set_now_playing(self, title):
         IDisplay.NOW_PLAYING = title
+
+    def set_radio_name(self, name):
+        IDisplay.RADIO_NAME = name
+
+    def set_radio_genre(self, genre):
+        IDisplay.RADIO_GENRE = genre
+
+    def set_radio_bitrate(self, br):
+        IDisplay.RADIO_BITRATE = br
+
+    def set_src(self, src):
+        IDisplay.SRC = src
 
 class update_fake_display(threading.Thread):
     def __init__(self, threadID, name, logger):

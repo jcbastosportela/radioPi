@@ -20,6 +20,7 @@ defRadioCMD = IPlayer.PLAYER_OMX
 #definition of possible sources
 SRC_YOUTUBE = "youtube"
 SRC_RADIO = "radio"
+SRC_LOCAL = "local"
 SRC_MEDIA = "media"     # generic - will attempt to parse and get the stream
 
 #define the Media Parsing Keys
@@ -27,7 +28,6 @@ MEDIA_KEY_YOUTUBE = "youtu"
 MEDIA_KEY_HTTP = "http"
 MEDIA_KEY_PLS_PLAYLIST= ".pls"
 MEDIA_KEY_ASX_PLAYLIST = ".asx"
-
 
 #definition of possible system commands
 CMD_POWER = "pwr"
@@ -38,6 +38,7 @@ class IRadio:
     RADIO_NAME = "..."
     RADIO_GENRE = "..."
     RADIO_BITRATE = "..."
+    SRC = "NONE"
 
     def __init__(self):
         print ""
@@ -83,6 +84,7 @@ class IRadio:
         self.player.play(url)
         self.log.debug("playing " + title)
         IRadio.NOW_PLAYING = title
+        IRadio.SRC = SRC_YOUTUBE
 
     def local_track(self, path):
         """
@@ -95,8 +97,9 @@ class IRadio:
         path = os.path.normpath(path)
         path = path.replace(" ", "\ ")
         self.player.play(path)
-        self.log.debug("playing " + path.substring(path.lastIndexOf("/")+1, path.length()))
-        IRadio.NOW_PLAYING = path.substring(path.lastIndexOf("/")+1, path.length())
+        #self.log.debug("playing " + path.substring(path.lastIndexOf("/")+1, path.length()))
+        IRadio.NOW_PLAYING = path
+        IRadio.SRC = SRC_LOCAL
 
     def local_playlist(self, pls_path):
         """
@@ -120,6 +123,7 @@ class IRadio:
         else:
             self.log.error("No valid playlist in " + pls_path)
             return
+        IRadio.SRC = SRC_LOCAL
 
     def online_playlist(self, link):
         """
@@ -132,7 +136,8 @@ class IRadio:
         self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
         self.player.play("-playlist " + link)
         self.log.debug("playing " + link)
-        IRadio.NOW_PLAYING = link;
+        IRadio.NOW_PLAYING = link
+        IRadio.SRC = SRC_RADIO
 
 
     def mediaParse(self, media):
@@ -171,6 +176,7 @@ class IRadio:
             self.player.play(media)
             IRadio.NOW_PLAYING = media
             self.log.debug("playing " + media)
+            IRadio.SRC = SRC_MEDIA
 
 
     def process_command(self, cmd):
@@ -214,52 +220,6 @@ class IRadio:
             pass
 
 
-    def get_update(self):
-        """
-        :return: the Playing content
-        :rtype: str
-        """
-        # TODO implement
-        # MPlayer allows to get via API
-        if self.player.cmd == IPlayer.PLAYER_MPLAYER:
-            while 1:
-                try:
-                    line = self.player.read_stdout()
-                    if line.startswith("Name"):
-                        self.log.debug("\t\t" + line)
-                        IRadio.RADIO_NAME = ""
-                        ret = parse.search(": {}\n", line)
-                        if ret is not None and len(ret.fixed) != 0:
-                            self.log.debug("Radio Name " + ret.fixed[0])
-                            IRadio.RADIO_NAME = ret.fixed[0]
-                    if line.startswith("Genre"):
-                        self.log.debug("\t\t" + line)
-                        IRadio.RADIO_GENRE = ""
-                        ret = parse.search(": {}\n", line)
-                        if ret is not None and len(ret.fixed) != 0:
-                            self.log.debug("Radio Genre " + ret.fixed[0])
-                            IRadio.RADIO_GENRE = ret.fixed[0]
-                    if line.startswith("Bitrate"):
-                        self.log.debug("\t\t" + line)
-                        IRadio.RADIO_BITRATE = ""
-                        ret = parse.search(": {}\n", line)
-                        if ret is not None and len(ret.fixed) != 0:
-                            self.log.debug("Radio Bitrate " + ret.fixed[0])
-                            IRadio.RADIO_BITRATE = ret.fixed[0]
-                    if line.startswith('ICY Info:'):
-                        self.log.debug("\t\t" + line)
-                        IRadio.NOW_PLAYING = ""
-                        ret = parse.search("StreamTitle='{}';", line)
-                        if ret is not None and len(ret.fixed) != 0:
-                            self.log.debug("sending " + ret.fixed[0])
-                            IRadio.NOW_PLAYING = ret.fixed[0]
-                        return IRadio.NOW_PLAYING
-                except Exception as err:
-                    return IRadio.NOW_PLAYING
-        else:
-            return IRadio.NOW_PLAYING
-
-
 class update_now_playing(threading.Thread):
     def __init__(self, threadID, name, logger, radio):
         """
@@ -270,8 +230,8 @@ class update_now_playing(threading.Thread):
         :type name: str
         :param logger: the logger
         :type logger: Logger
-        :param disp: the display
-        :type disp: IDisplay.IDisplay
+        :param radio: the display
+        :type radio: IRadio
 
         :return: nothing
         """
@@ -290,10 +250,10 @@ class update_now_playing(threading.Thread):
         # now keep updating
         while self.b_continue:
             try:
-                # if it's mplayer we must keep looking for changes
-                if self.radio.player.cmd == IPlayer.PLAYER_MPLAYER:
+                # if it's Radio we must keep looking for changes in the STD_OUT
+                if self.radio.SRC == SRC_RADIO:
                     while 1:
-                        try:
+                        try:    # Try to parse
                             line = self.radio.player.read_stdout()
                             if line.startswith("Name"):
                                 self.log.debug("\t\t" + line)
@@ -325,19 +285,32 @@ class update_now_playing(threading.Thread):
                                     IRadio.NOW_PLAYING = ret.fixed[0]
                         except Exception as err:
                             break
+                    # give the updates to display
+                    if self.now_playing != IRadio.NOW_PLAYING:
+                        self.now_playing = IRadio.NOW_PLAYING
+                        self.radio.display.set_now_playing(self.now_playing)
+                    if self.radio_name != IRadio.RADIO_NAME:
+                        self.radio_name = IRadio.RADIO_NAME
+                        self.radio.display.set_radio_name(self.radio_name)
+                    if self.radio_genre != IRadio.RADIO_GENRE:
+                        self.radio_genre = IRadio.RADIO_GENRE
+                        self.radio.display.set_radio_genre(self.radio_genre)
+                    if self.radio_bitrate != IRadio.RADIO_BITRATE:
+                        self.radio_bitrate = IRadio.RADIO_BITRATE
+                        self.radio.display.set_radio_bitrate(self.radio_bitrate)
 
-                if self.now_playing != IRadio.NOW_PLAYING:
-                    self.now_playing = IRadio.NOW_PLAYING
-                    self.radio.display.set_now_playing(self.now_playing)
-                if self.radio_name !=  IRadio.RADIO_NAME:
-                    self.radio_name = IRadio.RADIO_NAME
-                    self.radio.display.set_radio_name(self.radio_name)
-                if self.radio_genre !=  IRadio.RADIO_GENRE:
-                    self.radio_genre = IRadio.RADIO_GENRE
-                    self.radio.display.set_radio_genre(self.radio_genre)
-                if self.radio_bitrate !=  IRadio.RADIO_BITRATE:
-                    self.radio_bitrate = IRadio.RADIO_BITRATE
-                    self.radio.display.set_radio_bitrate(self.radio_bitrate)
+                # if we are playing local files
+                elif self.radio.SRC == SRC_LOCAL:
+                    ret = self.radio.player.get_value(IPlayer.FILENAME)
+                    if ret == "":
+                        ret = "...nothing playing..."
+                    IRadio.NOW_PLAYING = ret
+                    # give the updates to display
+                    if self.now_playing != IRadio.NOW_PLAYING:
+                        self.now_playing = IRadio.NOW_PLAYING
+                        self.radio.display.set_now_playing(self.now_playing)
+
+                # give it a break
                 time.sleep(0.5)               # Sleep 500ms
             except Exception as err:
                 self.log.error("Exception getting now playing: " + err.message)
