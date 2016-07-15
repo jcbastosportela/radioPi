@@ -98,6 +98,7 @@ class update_display(threading.Thread):
         self.radio_name = ""
         self.radio_genre = ""
         self.radio_bitrate = ""
+        self.active_src = ""
 
     #def show_animation(self):
         #image = []
@@ -113,6 +114,9 @@ class update_display(threading.Thread):
         xpos_rname = 0
         y_rname = self.fontsize_head + self.fontsize_title + self.fontsize_details
         y_rgen = y_rname + self.fontsize_title
+        y_src = self.fontsize_head + self.fontsize_title
+        xpos_src, unused = self.draw.textsize(DETAILS_TXT, font=self.font_details)
+        xpos_src += 3
         while self.b_continue:
             try:
                 if self.radio_name != IDisplay.RADIO_NAME:
@@ -134,6 +138,16 @@ class update_display(threading.Thread):
                     self.draw.rectangle((0, y_rname, self.disp.width, y_rname + self.fontsize_title),
                                         outline=0, fill=0)
                     self.draw.text((0, y_rname), txt , font=self.font_title, fill=255)
+                    self.disp.image(self.image)
+                    self.disp.display()
+
+                if self.active_src != IDisplay.SRC:
+                    self.active_src = IDisplay.SRC
+                    self.log.debug("!!!!!!!! Source: " + self.radio_genre + "!!!!!!!!!!")
+
+                    self.draw.rectangle((xpos_src, y_src, self.disp.width, y_src + self.fontsize_details),
+                                        outline=0, fill=0)
+                    self.draw.text((xpos_src, y_src), self.active_src, font=self.font_title, fill=255)
                     self.disp.image(self.image)
                     self.disp.display()
 

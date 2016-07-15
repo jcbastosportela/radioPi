@@ -84,7 +84,6 @@ class IRadio:
         self.player.play(url)
         self.log.debug("playing " + title)
         IRadio.NOW_PLAYING = title
-        IRadio.SRC = SRC_YOUTUBE
 
     def local_track(self, path):
         """
@@ -99,7 +98,6 @@ class IRadio:
         self.player.play(path)
         #self.log.debug("playing " + path.substring(path.lastIndexOf("/")+1, path.length()))
         IRadio.NOW_PLAYING = path
-        IRadio.SRC = SRC_LOCAL
 
     def local_playlist(self, pls_path):
         """
@@ -123,7 +121,6 @@ class IRadio:
         else:
             self.log.error("No valid playlist in " + pls_path)
             return
-        IRadio.SRC = SRC_LOCAL
 
     def online_playlist(self, link):
         """
@@ -137,7 +134,6 @@ class IRadio:
         self.player.play("-playlist " + link)
         self.log.debug("playing " + link)
         IRadio.NOW_PLAYING = link
-        IRadio.SRC = SRC_RADIO
 
 
     def mediaParse(self, media):
@@ -151,10 +147,12 @@ class IRadio:
         if media.__contains__(MEDIA_KEY_YOUTUBE):
             self.log.debug("Link seems to be youtube...")
             self.youtube_track(media)
+            IRadio.SRC = SRC_YOUTUBE
         # check if media is local content by checking if file exists
         elif os.path.isfile(media):
             self.log.debug("Seems to be local content...")
             self.local_track(media)
+            IRadio.SRC = SRC_LOCAL
         # check is the media is local folder
         elif os.path.isdir(media):
             self.log.debug("Seems to be local folder...")
@@ -163,12 +161,21 @@ class IRadio:
             else:
                 media = media + "/*"
             self.local_track(media)
+            IRadio.SRC = SRC_LOCAL
         # check if is online playlist
         elif media.startswith(MEDIA_KEY_HTTP) and ( media.__contains__(MEDIA_KEY_PLS_PLAYLIST) or
                                                     media.__contains__(MEDIA_KEY_ASX_PLAYLIST) ):
             self.log.debug("Seems online playlist...")
             self.online_playlist(media)
-
+            IRadio.SRC = SRC_RADIO
+        # infact anything else that is http lets say it's radio
+        elif media.startswith(MEDIA_KEY_HTTP):
+            self.player.stop()  # before creating new stop a potentially playing player
+            self.player = IPlayer.IPlayer(IPlayer.PLAYER_MPLAYER)
+            self.player.play(media)
+            IRadio.NOW_PLAYING = media
+            self.log.debug("playing " + media)
+            IRadio.SRC = SRC_RADIO
         # attempt playing whatever it is with MPlayer
         else:
             self.player.stop()  # before creating new stop a potentially playing player
@@ -245,6 +252,7 @@ class update_now_playing(threading.Thread):
         self.radio_name = ""
         self.radio_genre = ""
         self.radio_bitrate = ""
+        self.active_src = ""
 
     def run(self):
         # now keep updating
@@ -305,13 +313,23 @@ class update_now_playing(threading.Thread):
                     if ret == "":
                         ret = "...nothing playing..."
                     IRadio.NOW_PLAYING = ret
+
+                    # give the updates to display
+                    if self.now_playing != IRadio.NOW_PLAYING:
+                        self.now_playing = IRadio.NOW_PLAYING
+                        self.radio.display.set_now_playing(self.now_playing)
+
+                elif self.radio.SRC == SRC_YOUTUBE:
                     # give the updates to display
                     if self.now_playing != IRadio.NOW_PLAYING:
                         self.now_playing = IRadio.NOW_PLAYING
                         self.radio.display.set_now_playing(self.now_playing)
 
                 # give it a break
-                time.sleep(0.5)               # Sleep 500ms
+                if self.active_src != IRadio.SRC:
+                    self.active_src = IRadio.SRC
+                    self.radio.display.set_src(self.active_src)
+                time.sleep(1)               # Sleep 500ms
             except Exception as err:
                 self.log.error("Exception getting now playing: " + err.message)
                 pass
