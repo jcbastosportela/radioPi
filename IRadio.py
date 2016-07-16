@@ -24,6 +24,7 @@ SRC_LOCAL = "local"
 SRC_MEDIA = "media"     # generic - will attempt to parse and get the stream
 
 #define the Media Parsing Keys
+MEDIA_KEY_HTTPS = "https"
 MEDIA_KEY_YOUTUBE = "youtu"
 MEDIA_KEY_HTTP = "http"
 MEDIA_KEY_PLS_PLAYLIST= ".pls"
@@ -144,7 +145,7 @@ class IRadio:
         :return: none
         """
         # check if it's youtube
-        if media.__contains__(MEDIA_KEY_YOUTUBE):
+        if media.startswith(MEDIA_KEY_HTTP) and media.__contains__(MEDIA_KEY_YOUTUBE):
             self.log.debug("Link seems to be youtube...")
             self.youtube_track(media)
             IRadio.SRC = SRC_YOUTUBE
