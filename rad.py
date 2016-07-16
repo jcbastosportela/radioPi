@@ -15,13 +15,13 @@ log = logging.getLogger("Main")
 myRadio = 0 #IRadio.IRadio()
 wait_conn_thread = threading.Thread()
 HOST = ""
-PORT = 6666
+PORT = 6667
 BUFF = 1024
 FRAME_HEAD = chr(0x02)  #STX
 FRAME_TAIL = chr(0x03)  #ETX
 TCP_TIMEOUT = 20
 
-class waitTCPConnHandler( threading.Thread):
+class waitTCPConnHandler( threading.Thread ):
     def __init__(self, threadID, name):
         """
 
@@ -119,7 +119,7 @@ class getTCPCmdsHandler (threading.Thread):
             begin = time.time()
             while not b_frame:
                 if frame != "" and time.time() - begin > TCP_TIMEOUT * 2:
-                    log.info("TimeOut and some data " + frame )
+                    log.error("TimeOut and some data " + frame )
                     frame = ""
                 try:
                     data = self.clientsock.recv(1)
@@ -129,7 +129,7 @@ class getTCPCmdsHandler (threading.Thread):
                             log.debug("frame COMPLETE")
                             b_frame = True
                         elif not frame.startswith(FRAME_HEAD[0]) and len(frame) > len(FRAME_HEAD):
-                            log.debug("INVALID head")
+                            log.error("INVALID head")
                             frame = ""
                         # change the beginning time for measurement
                         begin = time.time()
@@ -141,7 +141,7 @@ class getTCPCmdsHandler (threading.Thread):
                     # since we aren't getting any data anyway
                     time.sleep(0.1)
                     pass
-            log.info("Going to process " + frame)
+            log.debug("Going to process " + frame)
             myRadio.process_command(frame)
 
         self.clientsock.close()
@@ -159,6 +159,7 @@ def __init__(nodisp=False, cmd_prearg=""):
 
 
     myRadio = IRadio.IRadio(nodisp=nodisp, prearg=cmd_prearg)
+    # TODO it must try to play what was playing in last place
     myRadio.mediaParse("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
     wait_conn_thread = waitTCPConnHandler(1, "wait_conn_thread")
     wait_conn_thread.setDaemon(1)

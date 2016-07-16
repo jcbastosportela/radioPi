@@ -6,6 +6,7 @@ import signal
 import subprocess
 import parse
 import time
+import threading
 from threading  import Thread
 try:
     from Queue import Queue, Empty
@@ -152,6 +153,8 @@ class IPlayer:
             self.ctrl_volup = OMX_VOLUP
             self.ctrl_voldown = OMX_VOLDOWN
 
+        self.b_is_playing = False
+
     def play(self, stream):
         """
         :param stream: The stream to open (URL or Path)
@@ -173,6 +176,11 @@ class IPlayer:
         self.read_thread = Thread(target=enqueue_output, args=(self.p.stdout, self.q))
         self.read_thread.daemon = True # thread dies with the program
         self.read_thread.start()
+
+
+        self.wait_exit_thread = wait_exit_handler(self, self.log)
+        self.wait_exit_thread.setDaemon(1)
+        self.wait_exit_thread.start()
         self.log.info("Radio App started!")
 
     def stop(self):
@@ -182,6 +190,9 @@ class IPlayer:
         except Exception as err:
             self.log.debug("Failed stopping player")
             pass
+
+    def is_playing(self):
+        return self.b_is_playing
 
     def send_control(self, ctrl):
         if ctrl == CTRL_PLAY:
@@ -226,3 +237,22 @@ class IPlayer:
 
     def read_stdout(self):
         return self.q.get_nowait()
+
+
+class wait_exit_handler(threading.Thread):
+    def __init__(self, player, logger):
+        """
+
+        :param player: The player object
+        :type player: IPlayer
+        :param logger: Logger
+        :type logger
+        """
+        threading.Thread.__init__(self)
+        self.log = logger
+        self.player = player
+
+    def run(self):
+        self.player.b_is_playing = True
+        self.player.p.wait()
+        self.player.b_is_playing = False

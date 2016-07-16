@@ -253,11 +253,18 @@ class update_now_playing(threading.Thread):
         self.radio_genre = ""
         self.radio_bitrate = ""
         self.active_src = ""
+        self.b_is_playing = False
 
     def run(self):
         # now keep updating
         while self.b_continue:
             try:
+                # Check if playback finished
+                if self.radio.player.is_playing() != self.b_is_playing:
+                    self.b_is_playing = self.radio.player.is_playing()
+                    self.radio.display.set_playing_stt(self.b_is_playing)
+
+
                 # if it's Radio we must keep looking for changes in the STD_OUT
                 if self.radio.SRC == SRC_RADIO:
                     while 1:

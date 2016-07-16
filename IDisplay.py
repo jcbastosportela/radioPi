@@ -22,6 +22,7 @@ class IDisplay:
     RADIO_GENRE = ""
     RADIO_BITRATE = ""
     SRC = ""
+    IS_PLAYING = False
     def __init__(self):
         """
 
@@ -53,6 +54,10 @@ class IDisplay:
 
     def set_src(self, src):
         IDisplay.SRC = src
+
+    def set_playing_stt(self, b_stt):
+        IDisplay.IS_PLAYING = b_stt
+
 
 class update_display(threading.Thread):
     def __init__(self, threadID, name, logger):
@@ -99,6 +104,7 @@ class update_display(threading.Thread):
         self.radio_genre = ""
         self.radio_bitrate = ""
         self.active_src = ""
+        self.b_is_playing = False
 
     #def show_animation(self):
         #image = []
@@ -119,6 +125,14 @@ class update_display(threading.Thread):
         xpos_src += 3
         while self.b_continue:
             try:
+                if self.b_is_playing != IDisplay.IS_PLAYING:
+                    self.b_is_playing = IDisplay.IS_PLAYING
+                    IDisplay.RADIO_NAME = ""
+                    IDisplay.NOW_PLAYING = ""
+                    IDisplay.RADIO_GENRE = ""
+                    IDisplay.RADIO_BITRATE = ""
+                    IDisplay.SRC = ""
+
                 if self.radio_name != IDisplay.RADIO_NAME:
                     self.radio_name = IDisplay.RADIO_NAME
                     self.log.debug(">>>>>>>> Radio Name: " + self.radio_name + "<<<<<<<<<<")
@@ -248,6 +262,9 @@ class IDisplay_fake:
 
     def set_src(self, src):
         IDisplay.SRC = src
+
+    def set_playing_stt(self, b_stt):
+        IDisplay.SRC = b_stt
 
 class update_fake_display(threading.Thread):
     def __init__(self, threadID, name, logger):
