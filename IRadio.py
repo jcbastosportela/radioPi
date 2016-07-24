@@ -264,6 +264,13 @@ class update_now_playing(threading.Thread):
                 if self.radio.player.is_playing() != self.b_is_playing:
                     self.b_is_playing = self.radio.player.is_playing()
                     self.radio.display.set_playing_stt(self.b_is_playing)
+                    if not self.b_is_playing:
+                        IRadio.RADIO_NAME = ""
+                        IRadio.NOW_PLAYING = ""
+                        IRadio.RADIO_GENRE = ""
+                        IRadio.RADIO_BITRATE = ""
+                        IRadio.SRC = ""
+
 
 
                 # if it's Radio we must keep looking for changes in the STD_OUT

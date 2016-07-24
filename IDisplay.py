@@ -125,16 +125,9 @@ class update_display(threading.Thread):
         xpos_src += 3
         while self.b_continue:
             try:
-                if self.b_is_playing != IDisplay.IS_PLAYING:
-                    self.b_is_playing = IDisplay.IS_PLAYING
-                    IDisplay.RADIO_NAME = ""
-                    IDisplay.NOW_PLAYING = ""
-                    IDisplay.RADIO_GENRE = ""
-                    IDisplay.RADIO_BITRATE = ""
-                    IDisplay.SRC = ""
-
-                if self.radio_name != IDisplay.RADIO_NAME:
+                if self.radio_name != IDisplay.RADIO_NAME or self.radio_bitrate != IDisplay.RADIO_BITRATE:
                     self.radio_name = IDisplay.RADIO_NAME
+                    self.radio_bitrate = IDisplay.RADIO_BITRATE
                     self.log.debug(">>>>>>>> Radio Name: " + self.radio_name + "<<<<<<<<<<")
 
                     txt =  self.radio_name
@@ -157,7 +150,7 @@ class update_display(threading.Thread):
 
                 if self.active_src != IDisplay.SRC:
                     self.active_src = IDisplay.SRC
-                    self.log.debug("!!!!!!!! Source: " + self.radio_genre + "!!!!!!!!!!")
+                    self.log.debug("!!!!!!!! Source: " + self.active_src + "!!!!!!!!!!")
 
                     self.draw.rectangle((xpos_src, y_src, self.disp.width, y_src + self.fontsize_details),
                                         outline=0, fill=0)
@@ -218,6 +211,16 @@ class update_display(threading.Thread):
                     time.sleep(0.01)  # Sleep 100ms
                 else:
                     time.sleep(0.5)  # Sleep 100ms
+
+                if self.b_is_playing != IDisplay.IS_PLAYING:
+                    self.b_is_playing = IDisplay.IS_PLAYING
+                    if not self.b_is_playing:
+                        self.log.debug("Playback stopped...")
+                        IDisplay.RADIO_NAME = ""
+                        IDisplay.NOW_PLAYING = ""
+                        IDisplay.RADIO_GENRE = ""
+                        IDisplay.RADIO_BITRATE = ""
+                        IDisplay.SRC = ""
             except Exception as err:
                 self.log.error("Exception getting now playing: " + err.message)
                 pass
@@ -264,7 +267,7 @@ class IDisplay_fake:
         IDisplay.SRC = src
 
     def set_playing_stt(self, b_stt):
-        IDisplay.SRC = b_stt
+        IDisplay.IS_PLAYING = b_stt
 
 class update_fake_display(threading.Thread):
     def __init__(self, threadID, name, logger):
