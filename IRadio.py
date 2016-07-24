@@ -17,6 +17,14 @@ import IDisplay
 SEPARATOR = chr(29)     # GS
 defRadioCMD = IPlayer.PLAYER_OMX
 
+# the file with the playlists
+PI_RADIO_LISTS = "./radiopi.lrp"
+RPL_RADIO = "radio"
+RPL_YOUTUBE = "youtube"
+RPL_NENTRIES = "NumberOfEntries"
+RPL_ENTRY = "entry{0}"
+RPL_ENTRY_NAME = "name{0}"
+
 #definition of possible sources
 SRC_YOUTUBE = "youtube"
 SRC_RADIO = "radio"
@@ -62,9 +70,48 @@ class IRadio:
         self.log.addHandler(streamH)
         self.log.debug("IRadio log inited")
 
+        # load the playlists
+        self.rplist = ConfigParser.ConfigParser()
+        if not os.path.isfile(PI_RADIO_LISTS):
+            # if it doesn't exist lets create
+            self.create_radiopi_list_file()
+            self.rplistfile = open(PI_RADIO_LISTS, 'r+')
+            self.rplist.read(PI_RADIO_LISTS)
+        else:
+            self.rplistfile = open(PI_RADIO_LISTS, 'r+')
+            self.rplist.read(PI_RADIO_LISTS)
+            try:
+                self.rplist.get(RPL_RADIO, RPL_NENTRIES, 0)
+                self.rplist.get(RPL_YOUTUBE, RPL_NENTRIES, 0)
+            except ConfigParser.NoSectionError as err:
+                self.log.info("Creating new RadioPiList: " + err.message)
+                self.create_radiopi_list_file()
+                self.rplistfile = open(PI_RADIO_LISTS, 'r+')
+                self.rplist.read(PI_RADIO_LISTS)
+
         self.update_playing_thread = update_now_playing(1, "update_playing_thread", self.log, self)
         self.update_playing_thread.setDaemon(1)
         self.update_playing_thread.start()
+
+    def create_radiopi_list_file(self):
+
+        try:
+            self.rplistfile.close()
+        except:
+            pass
+        self.rplist.add_section(RPL_RADIO)
+        self.rplist.set(RPL_RADIO, RPL_NENTRIES, "0" )
+        self.rplist.add_section(RPL_YOUTUBE)
+        self.rplist.set(RPL_YOUTUBE, RPL_NENTRIES, "0" )
+
+        self.rplistfile = open(PI_RADIO_LISTS, 'w')
+        self.rplist.write(self.rplistfile)
+        try:
+            self.rplistfile.close()
+        except:
+            pass
+
+
 
     def play(self, path):
         self.player.play(path)
@@ -142,18 +189,20 @@ class IRadio:
         :param media: the media content string
         :type media: str
 
-        :return: none
+        :return: the type of source parsed
         """
         # check if it's youtube
         if media.startswith(MEDIA_KEY_HTTP) and media.__contains__(MEDIA_KEY_YOUTUBE):
             self.log.debug("Link seems to be youtube...")
             self.youtube_track(media)
             IRadio.SRC = SRC_YOUTUBE
+            return  SRC_YOUTUBE
         # check if media is local content by checking if file exists
         elif os.path.isfile(media):
             self.log.debug("Seems to be local content...")
             self.local_track(media)
             IRadio.SRC = SRC_LOCAL
+            return  SRC_LOCAL
         # check is the media is local folder
         elif os.path.isdir(media):
             self.log.debug("Seems to be local folder...")
@@ -163,12 +212,14 @@ class IRadio:
                 media = media + "/*"
             self.local_track(media)
             IRadio.SRC = SRC_LOCAL
+            return  SRC_LOCAL
         # check if is online playlist
         elif media.startswith(MEDIA_KEY_HTTP) and ( media.__contains__(MEDIA_KEY_PLS_PLAYLIST) or
                                                     media.__contains__(MEDIA_KEY_ASX_PLAYLIST) ):
             self.log.debug("Seems online playlist...")
             self.online_playlist(media)
             IRadio.SRC = SRC_RADIO
+            return  SRC_RADIO
         # infact anything else that is http lets say it's radio
         elif media.startswith(MEDIA_KEY_HTTP):
             self.player.stop()  # before creating new stop a potentially playing player
@@ -177,6 +228,7 @@ class IRadio:
             IRadio.NOW_PLAYING = media
             self.log.debug("playing " + media)
             IRadio.SRC = SRC_RADIO
+            return  SRC_RADIO
         # attempt playing whatever it is with MPlayer
         else:
             self.player.stop()  # before creating new stop a potentially playing player
@@ -185,6 +237,19 @@ class IRadio:
             IRadio.NOW_PLAYING = media
             self.log.debug("playing " + media)
             IRadio.SRC = SRC_MEDIA
+            return  SRC_MEDIA
+
+    def rplist_add(self, src, val, name=""):
+        n_entries = self.rplist.get(src, RPL_NENTRIES)
+        n_entries = int(n_entries)
+        self.rplist.set(src, RPL_ENTRY.format(n_entries), val)
+        if name != "":
+            self.rplist.set(src, RPL_ENTRY_NAME.format(n_entries), name)
+        else:
+            self.rplist.set(src, RPL_ENTRY_NAME.format(n_entries), val)
+        n_entries += 1
+        self.rplist.set(src, RPL_NENTRIES, n_entries)
+        self.rplist.write(self.rplistfile)
 
 
     def process_command(self, cmd):
@@ -205,6 +270,21 @@ class IRadio:
                     if ret is not None and len(ret.fixed) != 0:
                         self.log.debug("Trying to parse " + ret.fixed[0])
                         self.mediaParse(ret.fixed[0])
+                        return
+                return
+
+            ret = parse.search("add={:w}" + SEPARATOR, cmd)
+            if ret is not None and len(ret.fixed) != 0:
+                if SRC_MEDIA.lower() == ret.fixed[0].lower():
+                    cmd = cmd.replace("src=" + ret.fixed[0], "")
+                    self.log.debug("Trying to find media in " + cmd)
+                    ret = parse.search(SEPARATOR + "{}" + SEPARATOR, cmd)
+                    if ret is not None and len(ret.fixed) != 0:
+                        self.log.debug("Trying to parse " + ret.fixed[0])
+                        src_type = self.mediaParse(ret.fixed[0])
+
+                        if src_type == SRC_YOUTUBE:
+                            self.rplist_add( RPL_YOUTUBE, ret.fixed[0], IRadio.NOW_PLAYING)
                         return
                 return
 

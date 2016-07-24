@@ -4,6 +4,7 @@ import threading
 import time
 import IRadio
 try:
+    import RPi.GPIO as GPIO
     import Adafruit_SSD1306
     from PIL import Image
     from PIL import ImageDraw
