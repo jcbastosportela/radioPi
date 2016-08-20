@@ -40,6 +40,7 @@ MEDIA_KEY_ASX_PLAYLIST = ".asx"
 
 #definition of possible system commands
 CMD_POWER = "pwr"
+CMD_GET_PLAYLIST = "gpls"
 
 
 class IRadio:
@@ -298,6 +299,12 @@ class IRadio:
                 # Is Power Off?
                 if CMD_POWER.lower() == ret.fixed[0].lower():
                     self.p = subprocess.Popen("sudo init 0", shell=True, stdin=subprocess.PIPE, preexec_fn=os.setsid)
+                    return
+
+                # is get playlist
+                if CMD_GET_PLAYLIST.lower() == ret.fixed[0].lower():
+                    # send the playlist entries
+
                     return
                 # TODO process commands
                 # TODO think of a way of saving/managing the added radio stations (local/remote?)
