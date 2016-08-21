@@ -53,13 +53,16 @@ class IRadio:
     def __init__(self):
         print ""
 
-    def __init__(self, nodisp=False, prearg=""):
+    def __init__(self, tcpsndr, nodisp=False, prearg=""):
         """
+        :param tcpsndr: the TCP sender interface
+        :type tcpsndr: TCPSender
         :param nodisp: Enables/Disables usage of OLED display
         :type nodisp: bool
         :param prearg: Argument to pass before player command
         :type prearg: str
         """
+        self.tcpsend = tcpsndr
         self.player = IPlayer.IPlayer(defRadioCMD, prearg)
         if nodisp:
             self.display = IDisplay.IDisplay_fake()
@@ -241,7 +244,7 @@ class IRadio:
             return  SRC_MEDIA
 
     def rplist_add(self, src, val, name=""):
-        n_entries = self.rplist.get(src, RPL_NENTRIES)
+        n_entries = self.rplist.get(src, RPL_NENTRIES, raw=True)
         n_entries = int(n_entries)
         self.rplist.set(src, RPL_ENTRY.format(n_entries), val)
         if name != "":
@@ -250,7 +253,12 @@ class IRadio:
             self.rplist.set(src, RPL_ENTRY_NAME.format(n_entries), val)
         n_entries += 1
         self.rplist.set(src, RPL_NENTRIES, n_entries)
+        self.rplistfile = open(PI_RADIO_LISTS, 'w')
         self.rplist.write(self.rplistfile)
+        try:
+            self.rplistfile.close()
+        except:
+            pass
 
 
     def process_command(self, cmd):
@@ -277,7 +285,7 @@ class IRadio:
             ret = parse.search("add={:w}" + SEPARATOR, cmd)
             if ret is not None and len(ret.fixed) != 0:
                 if SRC_MEDIA.lower() == ret.fixed[0].lower():
-                    cmd = cmd.replace("src=" + ret.fixed[0], "")
+                    cmd = cmd.replace("add=" + ret.fixed[0], "")
                     self.log.debug("Trying to find media in " + cmd)
                     ret = parse.search(SEPARATOR + "{}" + SEPARATOR, cmd)
                     if ret is not None and len(ret.fixed) != 0:
@@ -304,7 +312,9 @@ class IRadio:
                 # is get playlist
                 if CMD_GET_PLAYLIST.lower() == ret.fixed[0].lower():
                     # send the playlist entries
-
+                    with open(PI_RADIO_LISTS, 'r') as file:
+                        for line in file:
+                            self.tcpsend.send(line)
                     return
                 # TODO process commands
                 # TODO think of a way of saving/managing the added radio stations (local/remote?)
@@ -441,7 +451,7 @@ def __stop(self):
     try:
         self.b_continue = False
     except Exception as err:
-        log.error("Excetion stopping thread " + err.message)
+        self.log.error("Excetion stopping thread " + err.message)
         pass
 
 

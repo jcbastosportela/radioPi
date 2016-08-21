@@ -29,3 +29,4 @@ ConfigParser
 
 .Example of commands:
 cmd=listradios
+cmd=gpls

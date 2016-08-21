@@ -2,9 +2,7 @@
 numberofentries = 0
 
 [youtube]
-numberofentries = 2
-entry0 = https://www.youtube.com/watch?v=wDjeBNv6ip0
-name0 = https://www.youtube.com/watch?v=wDjeBNv6ip0
-entry1 = https://www.youtube.com/watch?v=wDjeBNv6ip0
-name1 = LP - Lost On You [Live Session]
+numberofentries = 1
+entry0 = https://youtu.be/mkWhkKVvqHU
+name0 = Dean Martin - Volare  (High Quality - Remastered)
 

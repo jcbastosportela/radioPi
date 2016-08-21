@@ -21,6 +21,30 @@ FRAME_HEAD = chr(0x02)  #STX
 FRAME_TAIL = chr(0x03)  #ETX
 TCP_TIMEOUT = 20
 
+class TCPSender:
+    def __init__(self, clientsock):
+        """
+
+        :param threadID: Thread's ID
+        :type threadID: int
+        :param name: Thread's name
+        :type name: str
+        :param clientsock: The socket to read/write
+        :type clientsock: socket._socketobject
+
+        :return: nothing
+        """
+        self.clientsock = clientsock
+        return
+
+    def send(self, msg):
+        if self.clientsock is not None:
+            try:
+                self.clientsock.send(msg)
+            except:
+                print "failed sending tcp msg: " + msg
+                pass
+
 class waitTCPConnHandler( threading.Thread ):
     def __init__(self, threadID, name):
         """
@@ -66,6 +90,7 @@ class waitTCPConnHandler( threading.Thread ):
                         # thread.start_new_thread(get_tcp_cmds_handler, (conn,))
                         self.comm_thread = getTCPCmdsHandler(1, "comm_thread", conn)
                         self.comm_thread.start()
+                        tcpSender.clientsock = conn
                     except Exception as err:
                         log.error("Failed accepting connection: " + err.message)
                         break   # try to bing again
@@ -153,12 +178,13 @@ class getTCPCmdsHandler (threading.Thread):
 
 def __init__(nodisp=False, cmd_prearg=""):
     global myRadio
+    global tcpSender
     streamH = logging.StreamHandler(sys.stdout)
     log.addHandler(streamH)
     log.setLevel(logging.DEBUG)
 
-
-    myRadio = IRadio.IRadio(nodisp=nodisp, prearg=cmd_prearg)
+    tcpSender = TCPSender(None)
+    myRadio = IRadio.IRadio(tcpSender, nodisp=nodisp, prearg=cmd_prearg)
     # TODO it must try to play what was playing in last place
     myRadio.mediaParse("http://7509.live.streamtheworld.com:443/METRO_FM_SC")
     wait_conn_thread = waitTCPConnHandler(1, "wait_conn_thread")
