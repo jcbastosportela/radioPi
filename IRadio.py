@@ -7,7 +7,7 @@ import logging
 import os
 import sys
 import parse
-import requests
+import codecs
 import ConfigParser
 import threading
 import time
@@ -15,6 +15,8 @@ import IPlayer
 import IDisplay
 
 SEPARATOR = chr(29)     # GS
+FRAME_HEAD = chr(0x02)  #STX
+FRAME_TAIL = chr(0x03)  #ETX
 defRadioCMD = IPlayer.PLAYER_OMX
 
 # the file with the playlists
@@ -51,6 +53,9 @@ class IRadio:
     SRC = "NONE"
 
     def __init__(self):
+        """
+
+        """
         print ""
 
     def __init__(self, tcpsndr, nodisp=False, prearg=""):
@@ -79,10 +84,10 @@ class IRadio:
         if not os.path.isfile(PI_RADIO_LISTS):
             # if it doesn't exist lets create
             self.create_radiopi_list_file()
-            self.rplistfile = open(PI_RADIO_LISTS, 'r+')
+            self.rplistfile = codecs.open(PI_RADIO_LISTS, 'r+', encoding='utf-8')
             self.rplist.read(PI_RADIO_LISTS)
         else:
-            self.rplistfile = open(PI_RADIO_LISTS, 'r+')
+            self.rplistfile = codecs.open(PI_RADIO_LISTS, 'r+', encoding='utf-8')
             self.rplist.read(PI_RADIO_LISTS)
             try:
                 self.rplist.get(RPL_RADIO, RPL_NENTRIES, 0)
@@ -90,7 +95,7 @@ class IRadio:
             except ConfigParser.NoSectionError as err:
                 self.log.info("Creating new RadioPiList: " + err.message)
                 self.create_radiopi_list_file()
-                self.rplistfile = open(PI_RADIO_LISTS, 'r+')
+                self.rplistfile = codecs.open(PI_RADIO_LISTS, 'r+', encoding='utf-8')
                 self.rplist.read(PI_RADIO_LISTS)
 
         self.update_playing_thread = update_now_playing(1, "update_playing_thread", self.log, self)
@@ -98,7 +103,10 @@ class IRadio:
         self.update_playing_thread.start()
 
     def create_radiopi_list_file(self):
+        """
 
+        :return: nothing
+        """
         try:
             self.rplistfile.close()
         except:
@@ -118,9 +126,19 @@ class IRadio:
 
 
     def play(self, path):
+        """
+
+        :param path: the path to play
+        :type path: str
+        :return: nothing
+        """
         self.player.play(path)
 
     def stop(self):
+        """
+
+        :return: nothing
+        """
         self.player.stop()
 
     def youtube_track(self, link):
@@ -244,16 +262,27 @@ class IRadio:
             return  SRC_MEDIA
 
     def rplist_add(self, src, val, name=""):
+        """
+
+        :param src: the source
+        :type src: str
+        :param val: the value (link)
+        :type val: str
+        :param name: the name
+        :type name: str
+        :return: nothing
+        """
         n_entries = self.rplist.get(src, RPL_NENTRIES, raw=True)
         n_entries = int(n_entries)
         self.rplist.set(src, RPL_ENTRY.format(n_entries), val)
         if name != "":
+            #name = name.decode('utf-8')
             self.rplist.set(src, RPL_ENTRY_NAME.format(n_entries), name)
         else:
             self.rplist.set(src, RPL_ENTRY_NAME.format(n_entries), val)
         n_entries += 1
         self.rplist.set(src, RPL_NENTRIES, n_entries)
-        self.rplistfile = open(PI_RADIO_LISTS, 'w')
+        self.rplistfile = codecs.open(PI_RADIO_LISTS, 'w', encoding='utf-8')
         self.rplist.write(self.rplistfile)
         try:
             self.rplistfile.close()
@@ -312,10 +341,26 @@ class IRadio:
                 # is get playlist
                 if CMD_GET_PLAYLIST.lower() == ret.fixed[0].lower():
                     # send the playlist entries
-                    with open(PI_RADIO_LISTS, 'r') as file:
+                    n_entries = self.rplist.get(RPL_RADIO, RPL_NENTRIES, raw=True)
+                    #if type(n_entries) is str:
+                    n_entries = int(n_entries)
+                    if n_entries > 0:
+                        for idx in range(0,n_entries-1):
+                            entry = self.rplist.get(RPL_RADIO, RPL_ENTRY_NAME.format(idx))
+                            self.tcpsend.send(FRAME_HEAD + "cmd=radiopls" + SEPARATOR + entry + SEPARATOR + FRAME_TAIL)
+
+                    n_entries = self.rplist.get(RPL_YOUTUBE, RPL_NENTRIES, raw=True)
+                    #if type(n_entries) is str:
+                    n_entries = int(n_entries)
+                    if n_entries > 0:
+                        for idx in range(0, n_entries ):
+                            entry = self.rplist.get(RPL_YOUTUBE, RPL_ENTRY_NAME.format(idx)).encode('utf-8')
+                            self.tcpsend.send(FRAME_HEAD + "cmd=youtbpls" + SEPARATOR + entry + SEPARATOR + FRAME_TAIL)
+                    """with open(PI_RADIO_LISTS, 'r') as file:
                         for line in file:
-                            self.tcpsend.send(line)
-                    return
+                            if line.startswith("name"):
+                                self.tcpsend.send(FRAME_HEAD + "cmd=pls" + SEPARATOR + line + SEPARATOR + FRAME_TAIL )
+                    return"""
                 # TODO process commands
                 # TODO think of a way of saving/managing the added radio stations (local/remote?)
                 return

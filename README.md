@@ -30,3 +30,5 @@ ConfigParser
 .Example of commands:
 cmd=listradios
 cmd=gpls
+
+src=mediahttp://37.247.98.10/

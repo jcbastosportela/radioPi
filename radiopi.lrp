@@ -2,7 +2,9 @@
 numberofentries = 0
 
 [youtube]
-numberofentries = 1
-entry0 = https://youtu.be/mkWhkKVvqHU
-name0 = Dean Martin - Volare  (High Quality - Remastered)
+numberofentries = 2
+entry0 = https://youtu.be/ARS7Zi-Zpkw
+name0 = Amália Rodrigues - Fado Português
+entry1 = https://youtu.be/u8NkR2csotg
+name1 = Carminho-alma 2012 - Album Completo
 

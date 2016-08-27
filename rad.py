@@ -41,8 +41,8 @@ class TCPSender:
         if self.clientsock is not None:
             try:
                 self.clientsock.send(msg)
-            except:
-                print "failed sending tcp msg: " + msg
+            except Exception as err:
+                print "failed sending tcp msg: " + msg + "Reason: " + err.message
                 pass
 
 class waitTCPConnHandler( threading.Thread ):
@@ -217,6 +217,9 @@ def at_exit():
 # In case is called from terminal
 if __name__ == "__main__":
     import sys
+
+    reload(sys)
+    sys.setdefaultencoding('utf-8')
     # register the program exit
     atexit.register(at_exit)
 
